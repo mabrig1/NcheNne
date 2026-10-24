@@ -1,7 +1,9 @@
 import {NEEDS,eligible,createOffer,transition,validateOffer,iso} from "../src/domain.js";
 const HEADERS={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
   "Content-Security-Policy":"default-src 'none'; frame-ancestors 'none'",
-  "Referrer-Policy":"no-referrer"};
+  "Referrer-Policy":"no-referrer","X-Frame-Options":"DENY",
+  "X-Robots-Tag":"noindex, nofollow, noarchive",
+  "Permissions-Policy":"camera=(), microphone=(), geolocation=(), payment=()"};
 const reply=(data,status=200)=>Response.json(data,{status,headers:HEADERS});
 const error=(message,status=400)=>reply({demoOnly:true,error:message},status);
 const DEMOS=[
@@ -53,6 +55,39 @@ async function api(req,env,path){
  if(!env.DB)return error("Fictional D1 database is not configured",503);
  if(req.method==="GET"&&path==="/api/facilities")
    return reply({demoOnly:true,facilities:await facilities(env.DB)});
+ if(req.method==="GET"&&path==="/api/demo/summary"){
+   // Aggregates are derived solely from the demo-only schema, never patient data.
+   const sample=await facilities(env.DB);
+   const counts=(await env.DB.prepare(
+     "SELECT status, COUNT(*) AS total FROM referrals WHERE demo_only=1 GROUP BY status"
+   ).all()).results;
+   const referralCounts=Object.fromEntries(
+     ["offered","accepted","arrived","completed","declined","escalated","expired"]
+       .map(status=>[status,0]));
+   for(const item of counts){
+     if(Object.hasOwn(referralCounts,item.status)&&Number.isSafeInteger(item.total)&&item.total>=0)
+       referralCounts[item.status]=item.total;
+   }
+   const receiving=sample.filter(f=>f.type==="referral");
+   const now=Date.now();
+   return reply({
+     demoOnly:true,mode:"fictional_only",clinicalUse:false,liveOperations:false,
+     generatedAt:iso(now),
+     facilities:{
+       total:sample.length,
+       receiving:receiving.length,
+       freshReceiving:receiving.filter(f=>["skilled","theatre","blood","comprehensive"]
+          .some(need=>eligible(f,need,now))).length,
+       eligibleFor:Object.fromEntries(Object.keys(NEEDS)
+         .map(need=>[need,receiving.filter(f=>eligible(f,need,now)).length]))
+     },
+     referrals:{
+       total:Object.values(referralCounts).reduce((a,b)=>a+b,0),
+       byStatus:referralCounts
+     },
+     disclaimer:"Fictional sample facilities and referrals; not actual healthcare availability."
+   });
+ }
  if(req.method==="GET"&&path==="/api/referrals"){
    const ids=(await env.DB.prepare("SELECT id FROM referrals ORDER BY created_at DESC LIMIT 100").all()).results;
    return reply({demoOnly:true,referrals:await Promise.all(ids.map(x=>getReferral(env.DB,x.id)))});
