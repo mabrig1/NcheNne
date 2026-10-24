@@ -26,9 +26,14 @@ There is **no operational data exchange with either application**.
   escalation and expiry. An *offer is not a reservation or acceptance*.
 - A separate Cloudflare Worker API with D1 persistence for strictly **fictional**
   referrals and capacity reports. Demo writes require a server-side owner token.
-- A **read-only Worker/D1 connection status panel** in the static interface. The
-  clickable referral interface **remains browser-local**; it neither sends
-  mutations to D1 nor represents D1 records as active clinical cases.
+- A read-only Worker/D1 health and facility-status connection panel, plus an
+  **opt-in remote fictional-referral ledger inspector** that fetches only on click.
+  The inspector validates an exact all-fictional response contract, rejects unknown
+  fields, strips event details and safely displays a restricted status-only view.
+  It never receives or transmits an API token or writes to D1.
+- Interactive referral cards remain **browser-local**; the read-only D1 inspector
+  does not synchronize or replace those scenarios. It cannot represent any
+  referral as an active clinical case.
 - Optimistic state-version checks and atomic D1 update/event batches for synthetic
   referral event history; unique demo referral-code and event constraints.
 
@@ -85,6 +90,20 @@ NCHENNE_BASE_URL=http://127.0.0.1:8787 npm run smoke:demo
 The test script creates **only** random `SIM-...` IDs. Its requests are intentionally
 rejected for identifying fields, unknown facilities, incomplete transitions and
 non-fictional cases.
+
+
+### Inspect fictional D1 records (read-only, explicit opt-in)
+
+When the application is served from a configured Worker and the fictional D1
+database is reachable, the top banner reports the connection. Click
+**Inspect fictional D1 ledger (read-only)** to fetch only the demo referral
+statuses and event counts. No bearer token is used, no clinic or patient record
+is permitted, and nothing is cached in the offline service worker. The view
+uses a defensive all-fictional allowlist and `textContent` rather than HTML
+injection. If D1 is not connected, the inspector stays disabled.
+
+This is a **read-only bridge**, not a production referral dashboard. Synthetic
+referrals produced by the local role-play UI remain separate from D1.
 
 ## API and persistence contract
 
