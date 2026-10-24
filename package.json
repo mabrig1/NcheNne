@@ -1,0 +1,20 @@
+{
+  "name": "nchenne-health-network",
+  "version": "0.2.0",
+  "type": "module",
+  "private": true,
+  "description": "Synthetic-only fictional maternal referral simulator; not for clinical use",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "npm test && node --check worker/index.js && node --check src/domain.js",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply nchenne_demo --local"
+  },
+  "devDependencies": {
+    "wrangler": "^4.45.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

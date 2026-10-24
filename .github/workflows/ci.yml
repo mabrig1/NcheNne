@@ -1,0 +1,18 @@
+name: NcheNne fictional-demo quality gate
+on:
+  pull_request:
+  push:
+    branches: [main, "feature/**"]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm run check
+      - run: test -f public/index.html
+      - run: grep -q "FICTIONAL DEMONSTRATION" public/index.html
