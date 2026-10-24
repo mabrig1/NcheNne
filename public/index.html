@@ -290,7 +290,9 @@ if('serviceWorker' in navigator && location.protocol==='https:')navigator.servic
 <script type="module">
 import {parseDemoLedger,renderDemoLedger} from './demo-inspector.js';
 import {parseDemoWatchlist,renderDemoWatchlist} from './demo-watchlist.js';
-/* Read-only synthetic Worker status. No tokens, private records, or mutations. */
+/* Read-only synthetic Worker status. No tokens, private records, or mutations.
+   Same-origin cookies are required for Cloudflare Access on the protected
+   staging Worker. They are never included in cross-origin requests. */
 (() => {
   const indicator = document.getElementById('worker-status');
   const button = document.getElementById('inspect-d1-button');
@@ -313,7 +315,7 @@ import {parseDemoWatchlist,renderDemoWatchlist} from './demo-watchlist.js';
     try {
       const response = await fetch('/api/health', {
         method:'GET', headers:{Accept:'application/json'}, cache:'no-store',
-        credentials:'omit', redirect:'error', signal:AbortSignal.timeout(4500)
+        credentials:'same-origin', redirect:'error', signal:AbortSignal.timeout(4500)
       });
       if (!response.ok) throw Error('Worker unavailable');
       const data = await response.json();
@@ -324,7 +326,7 @@ import {parseDemoWatchlist,renderDemoWatchlist} from './demo-watchlist.js';
       }
       const facilitiesResponse=await fetch('/api/facilities', {
         method:'GET', headers:{Accept:'application/json'}, cache:'no-store',
-        credentials:'omit', redirect:'error', signal:AbortSignal.timeout(4500)
+        credentials:'same-origin', redirect:'error', signal:AbortSignal.timeout(4500)
       });
       if (!facilitiesResponse.ok) throw Error('D1 unavailable');
       const facilities=await facilitiesResponse.json();
@@ -340,7 +342,7 @@ import {parseDemoWatchlist,renderDemoWatchlist} from './demo-watchlist.js';
       try{
         const summaryResponse=await fetch('/api/demo/summary',{
           method:'GET',headers:{Accept:'application/json'},
-          cache:'no-store',credentials:'omit',redirect:'error',
+          cache:'no-store',credentials:'same-origin',redirect:'error',
           signal:AbortSignal.timeout(4500)
         });
         if(!summaryResponse.ok)throw Error('Synthetic aggregate missing');
@@ -374,7 +376,7 @@ import {parseDemoWatchlist,renderDemoWatchlist} from './demo-watchlist.js';
     try {
       const response=await fetch('/api/referrals',{
         method:'GET',headers:{Accept:'application/json'},
-        cache:'no-store',credentials:'omit',redirect:'error',
+        cache:'no-store',credentials:'same-origin',redirect:'error',
         signal:AbortSignal.timeout(4500)
       });
       if(!response.ok)throw Error('Not connected');
@@ -394,7 +396,7 @@ import {parseDemoWatchlist,renderDemoWatchlist} from './demo-watchlist.js';
     try{
       const response=await fetch('/api/demo/watchlist',{
         method:'GET',headers:{Accept:'application/json'},cache:'no-store',
-        credentials:'omit',redirect:'error',signal:AbortSignal.timeout(4500)
+        credentials:'same-origin',redirect:'error',signal:AbortSignal.timeout(4500)
       });
       if(!response.ok)throw Error('Fictional review queue not connected');
       const safe=parseDemoWatchlist(await response.json());
