@@ -64,12 +64,16 @@ async function api(req,env,path){
    for(const [id,name,district,type] of DEMOS){
      await env.DB.prepare("INSERT OR IGNORE INTO facilities(id,display_name,district,type,active,demo_only) VALUES(?,?,?,?,1,1)")
        .bind(id,name,district,type).run();
+     const isReferral=type==="referral";
+     const beds=id==="REF-C"?0:(id==="REF-A"?3:isReferral?2:1);
+     await env.DB.prepare("INSERT OR IGNORE INTO capacity_reports(facility_id,beds,skilled,theatre,blood,updated_at,reported_by) VALUES(?,?,?,?,?,?,?)")
+       .bind(id,beds,id==="REF-C"?0:1,id==="REF-A"?1:0,isReferral&&id!=="REF-C"?1:0,iso(),"demo_facility_staff").run();
    }
    return reply({demoOnly:true,facilities:await facilities(env.DB)});
  }
  if(path==="/api/capacities/report"){
    const b=await parseDemo(req,["demoOnly","facilityId","beds","skilled","theatre","blood"]);
-   if(typeof b.facilityId!=="string"||!DEMoId(b.facilityId)||
+   if(typeof b.facilityId!=="string"||!demoId(b.facilityId)||
       !Number.isInteger(b.beds)||b.beds<0||b.beds>500||
       ["skilled","theatre","blood"].some(k=>typeof b[k]!=="boolean"))
        return error("Invalid fictional capacity report");
@@ -111,7 +115,7 @@ async function api(req,env,path){
    .bind(original.id,next,actor,updated.timeline.at(-1).detail,updated.updatedAt).run();
  return reply(updated);
 }
-function DEMoId(id){return /^(PHC|REF)-[A-C]$/.test(id);}
+function demoId(id){return /^(PHC|REF)-[A-C]$/.test(id);}
 export default {async fetch(req,env){
  try{
    const path=new URL(req.url).pathname;
