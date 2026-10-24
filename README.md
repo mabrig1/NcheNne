@@ -171,3 +171,28 @@ The simulated 10-minute offer and 30-minute arrival intervals are **UI exercise
 examples, not safe waiting periods or clinical performance standards**.
 See [fictional review cue rules](docs/COORDINATION_REVIEW_CUES.md) before
 changing the thresholds or showing the demo to healthcare partners.
+
+
+## Optional OpenRouter — **OFF by default**
+
+NcheNne can optionally use your existing OpenRouter API key for **owner-only,
+fictional administrative workflow explanations**. No natural-language questions,
+clinical inputs or database records are sent to the provider.
+
+- The key goes only into Cloudflare's encrypted **`OPENROUTER_API_KEY`**
+  Worker secret. Never put it in the UI, GitHub, or chat.
+- `OPENROUTER_ENABLED=false` and `OPENROUTER_MODEL=""` are defaulted in
+  the Worker configs. To opt in after Access and cost reviews, select a
+  **specific available model ID ending in `:free`** and explicitly enable.
+- `GET /api/demo/ai/status` displays readiness without the key.
+- `POST /api/demo/ai/explain` is owner-demo-token protected and accepts
+  only a fixed simulated scenario code (no user-written text). It never
+  changes referral state or sends notifications.
+- The outbound API uses ZDR/no-data-collection routing, no paid fallback,
+  a 96-token output cap and no retries. This is **not** an account-wide
+  spending cap: configure OpenRouter account/key guardrails separately.
+- **No live API calls or OpenRouter costs are incurred by the repository's
+  unit tests or by the disabled default setting.**
+
+See the exact manual configuration steps in
+[OpenRouter setup](docs/OPENROUTER_CONFIGURATION.md).
