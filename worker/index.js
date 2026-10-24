@@ -108,11 +108,22 @@ async function api(req,env,path){
  const actor=["accepted","arrived","completed"].includes(next)?"demo_facility_staff":"demo_coordinator";
  const updated=transition(original,next,actor);
  // Conditional update prevents stale-state overwrite; production would need fully atomic event log.
- const modified=await env.DB.prepare("UPDATE referrals SET status=?,updated_at=? WHERE id=? AND status=? RETURNING id")
-   .bind(next,updated.updatedAt,original.id,original.status).first();
- if(!modified)return error("Concurrent demo transition; retry",409);
- await env.DB.prepare("INSERT INTO referral_events(referral_id,status,actor,detail,at) VALUES(?,?,?,?,?)")
-   .bind(original.id,next,actor,updated.timeline.at(-1).detail,updated.updatedAt).run();
+ // D1 batch is an atomic SQL transaction: no status change may survive
+ // if the corresponding fictional audit event cannot be recorded.
+ // The conditional UPDATE is an optimistic state-and-version check.
+ try {
+   const result=await env.DB.batch([
+     env.DB.prepare("UPDATE referrals SET status=?,updated_at=? WHERE id=? AND status=? AND updated_at=? RETURNING id")
+       .bind(next,updated.updatedAt,original.id,original.status,original.updatedAt),
+     env.DB.prepare("INSERT INTO referral_events(referral_id,status,actor,detail,at) SELECT ?,?,?,?,? WHERE EXISTS (SELECT 1 FROM referrals WHERE id=? AND status=? AND updated_at=?)")
+       .bind(original.id,next,actor,updated.timeline.at(-1).detail,updated.updatedAt,
+         original.id,next,updated.updatedAt)
+   ]);
+   if(result[0]?.results?.length!==1||result[1]?.meta?.changes!==1)
+     return error("Concurrent demo transition; retry",409);
+ }catch{
+   return error("Demo state conflict or event recording failed; no event was committed",409);
+ }
  return reply(updated);
 }
 function demoId(id){return /^(PHC|REF)-[A-C]$/.test(id);}
