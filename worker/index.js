@@ -1,5 +1,6 @@
 import {NEEDS,eligible,createOffer,transition,validateOffer,iso} from "../src/domain.js";
 import {buildDemoWatchlist} from "../src/watchlist.js";
+import {openRouterStatus,explainFictionalScenario} from "../src/openrouter.js";
 const HEADERS={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
   "Content-Security-Policy":"default-src 'none'; frame-ancestors 'none'",
   "Referrer-Policy":"no-referrer","X-Frame-Options":"DENY",
@@ -54,6 +55,8 @@ async function api(req,env,path){
  if(env.APP_MODE!=="synthetic_demo"||env.LIVE_CLINICAL_ENABLED!=="false")
    return error("Live clinical mode is unsupported",503);
  if(!env.DB)return error("Fictional D1 database is not configured",503);
+ if(req.method==="GET"&&path==="/api/demo/ai/status")
+   return reply(openRouterStatus(env));
  if(req.method==="GET"&&path==="/api/facilities")
    return reply({demoOnly:true,facilities:await facilities(env.DB)});
  if(req.method==="GET"&&path==="/api/demo/summary"){
@@ -106,6 +109,13 @@ async function api(req,env,path){
  }
  if(req.method!=="POST")return error("Not found",404);
  if(!(await requireOwner(req,env)))return error("Owner authorization required for demo writes",401);
+ if(path==="/api/demo/ai/explain"){
+   // The owner token is checked above. Requests never send DB content or
+   // user-authored text to OpenRouter; only an approved fictional enum.
+   const result=await explainFictionalScenario(env,
+     await parseDemo(req,["demoOnly","scenario"]));
+   return reply(result.body,result.statusCode);
+ }
  if(path==="/api/demo/seed"){
    await parseDemo(req,["demoOnly"]);
    for(const [id,name,district,type] of DEMOS){
