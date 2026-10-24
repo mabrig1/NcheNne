@@ -16,3 +16,15 @@ jobs:
       - run: npm run check
       - run: test -f public/index.html
       - run: grep -q "FICTIONAL DEMONSTRATION" public/index.html
+
+  cloudflare-dry-run:
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - name: Bundle Worker and static assets (no auth, no deployment)
+        run: npx wrangler deploy --dry-run --config wrangler.ci.jsonc --outdir .wrangler-dry-run
