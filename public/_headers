@@ -1,0 +1,9 @@
+# Nonclinical synthetic demonstration only. These static-asset rules do not
+# enforce access control; a protected Cloudflare Access policy is required
+# before private preview publication.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
