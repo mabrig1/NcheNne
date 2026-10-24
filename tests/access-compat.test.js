@@ -10,7 +10,7 @@ const sw=readFileSync(new URL("../public/sw.js",import.meta.url),"utf8");
 const stage=readFileSync(new URL("../wrangler.staging.jsonc",import.meta.url),"utf8");
 
 test("all five read-only staging API calls preserve same-origin Access credentials",()=>{
-  const fetches=[...html.matchAll(/fetch\('([^']+)',\s*\{([^}]+)\}/g)]
+  const fetches=[...html.matchAll(/fetch\('([^']+)',\s*\{([\s\S]*?)\}\s*\);/g)]
     .filter(match=>match[1].startsWith("/api/"));
   const paths=fetches.map(match=>match[1]).sort();
   assert.deepEqual(paths,[
