@@ -41,6 +41,15 @@ const reported=await request("POST","/api/capacities/report",{
   demoOnly:true,facilityId:"REF-A",beds:3,skilled:true,theatre:true,blood:true
 });
 assert.equal(reported.status,200);
+// Fail-closed checks against real-looking or unsupported case data.
+const identifying=await request("POST","/api/referrals",{
+  demoOnly:true,facilityId:"REF-A",need:"blood",id:"SIM-FAKE123456",phone:"+2348000000000"
+});
+assert.equal(identifying.status,400,"Unexpected patient identifier must be rejected");
+const unavailable=await request("POST","/api/referrals",{
+  demoOnly:true,facilityId:"REF-C",need:"comprehensive",id:"SIM-FAKE999999"
+});
+assert.equal(unavailable.status,400,"Never offer a fictional facility with no capacity");
 const id="SIM-"+randomBytes(7).toString("hex").toUpperCase();
 const created=await request("POST","/api/referrals",{
   demoOnly:true,facilityId:"REF-A",need:"comprehensive",id
@@ -48,6 +57,8 @@ const created=await request("POST","/api/referrals",{
 assert.equal(created.status,201);
 assert.equal(created.json.status,"offered");
 assert.equal(created.json.timeline.length,1);
+const premature=await request("POST",`/api/referrals/${id}/arrive`,fixture);
+assert.equal(premature.status,400,"Simulated arrival cannot precede acceptance");
 for(const [action,expected] of [
  ["accept","accepted"],["arrive","arrived"],["complete","completed"]
 ]){
@@ -62,4 +73,4 @@ assert.equal(completed.status,"completed");
 assert.equal(completed.timeline.length,4);
 const extra=await request("POST",`/api/referrals/${id}/complete`,fixture);
 assert.notEqual(extra.status,200,"Duplicate completion should fail");
-console.log("PASS: fictional-only API, authorized create, facility acceptance, arrival, completion, event timeline and rejection of repeats.");
+console.log("PASS: fictional-only API, authorized create, facility acceptance, arrival, completion, event timeline and rejection of identifiers, unavailable capacity, premature arrival and repeats.");
