@@ -1,0 +1,65 @@
+/**
+ * Opt-in integration smoke test for a SYNTHETIC-ONLY NcheNne deployment.
+ * Never pass real patient details. Never print or embed DEMO_API_TOKEN.
+ *
+ * Example:
+ *   NCHENNE_BASE_URL=http://127.0.0.1:8787 DEMO_API_TOKEN=... npm run smoke:demo
+ */
+import assert from "node:assert/strict";
+import {randomBytes} from "node:crypto";
+
+const base=new URL(process.env.NCHENNE_BASE_URL||"http://127.0.0.1:8787");
+if(!["http:","https:"].includes(base.protocol)||base.username||base.password||
+   base.pathname!=="/"||base.search||base.hash)throw Error("Use a bare test API origin");
+if(base.protocol!=="https:"&&!["localhost","127.0.0.1","[::1]"].includes(base.hostname))
+   throw Error("Refusing to send demo token to an insecure remote host");
+const token=process.env.DEMO_API_TOKEN;
+if(!token||token.length<24)throw Error("Provide your demo-only DEMO_API_TOKEN in the shell environment");
+async function request(method,path,body,authenticated=true){
+ const headers={Accept:"application/json"};
+ if(body!==undefined)headers["Content-Type"]="application/json";
+ if(authenticated)headers.Authorization="Bearer "+token;
+ const response=await fetch(new URL(path,base),{
+   method,headers,body:body===undefined?undefined:JSON.stringify(body),
+   redirect:"error",signal:AbortSignal.timeout(9000),cache:"no-store"
+ });
+ const json=await response.json().catch(()=>({error:"Non-JSON response"}));
+ return {status:response.status,json};
+}
+const fixture={demoOnly:true};
+const wrong=await request("POST","/api/demo/seed",fixture,false);
+assert.equal(wrong.status,401,"Anonymous simulation writes must be refused");
+const health=await request("GET","/api/health",undefined,false);
+assert.equal(health.status,200);
+assert.equal(health.json.clinicalUse,false);
+assert.equal(health.json.liveOperations,false);
+const seeded=await request("POST","/api/demo/seed",fixture);
+assert.equal(seeded.status,200);
+assert.equal(seeded.json.demoOnly,true);
+assert.ok(seeded.json.facilities.every(f=>f.demoOnly===true));
+const reported=await request("POST","/api/capacities/report",{
+  demoOnly:true,facilityId:"REF-A",beds:3,skilled:true,theatre:true,blood:true
+});
+assert.equal(reported.status,200);
+const id="SIM-"+randomBytes(7).toString("hex").toUpperCase();
+const created=await request("POST","/api/referrals",{
+  demoOnly:true,facilityId:"REF-A",need:"comprehensive",id
+});
+assert.equal(created.status,201);
+assert.equal(created.json.status,"offered");
+assert.equal(created.json.timeline.length,1);
+for(const [action,expected] of [
+ ["accept","accepted"],["arrive","arrived"],["complete","completed"]
+]){
+ const r=await request("POST",`/api/referrals/${id}/${action}`,fixture);
+ assert.equal(r.status,200,`${action}: ${JSON.stringify(r.json)}`);
+ assert.equal(r.json.status,expected);
+}
+const list=await request("GET","/api/referrals",undefined,false);
+assert.equal(list.status,200);
+const completed=list.json.referrals.find(r=>r.id===id);
+assert.equal(completed.status,"completed");
+assert.equal(completed.timeline.length,4);
+const extra=await request("POST",`/api/referrals/${id}/complete`,fixture);
+assert.notEqual(extra.status,200,"Duplicate completion should fail");
+console.log("PASS: fictional-only API, authorized create, facility acceptance, arrival, completion, event timeline and rejection of repeats.");
