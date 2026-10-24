@@ -1,0 +1,27 @@
+// TEMPLATE ONLY: private/unrouted staging; NOT READY for deployment until Cloudflare owner verifies billing, D1 and Access.
+{
+  "name": "nchenne-staging",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  },
+  "vars": {
+    "APP_MODE": "synthetic_demo",
+    "LIVE_CLINICAL_ENABLED": "false"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nchenne_staging_demo",
+      "database_id": "REPLACE_WITH_NEW_STAGING_D1_DATABASE_UUID",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
