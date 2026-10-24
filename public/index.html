@@ -61,6 +61,10 @@
         <select id="language" aria-label="Choose interface language"><option value="en">English</option><option value="pcm">Pidgin</option><option value="ig">Igbo</option><option value="yo">Yorùbá</option><option value="ha">Hausa</option></select>
       </div>
     </header>
+    <aside aria-label="Demonstration backend connection" style="background:#edf6f1;border:1px solid #d7e9dc;border-radius:10px;padding:10px 14px;margin:0 0 20px;color:#1f5444;font-size:12px;line-height:1.55">
+      <strong>Simulation connection:</strong> <span id="worker-status" role="status" aria-live="polite">Checking fictional Worker API...</span>
+      <div style="font-size:11px;margin-top:4px;color:#517367">The interactive referral cards below are a separate, browser-local simulation; they do not read or write Cloudflare D1.</div>
+    </aside>
     <section id="page-content" aria-live="polite"></section>
   </main>
 </div>
@@ -273,6 +277,50 @@ render();
 // Offline cache contains static shell and synthetic source only. No clinical or patient records are cached.
 if('serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('/sw.js').catch(()=>{});
 
+</script>
+
+<script>
+/* Read-only synthetic Worker status. No tokens, private records, or mutations. */
+(() => {
+  const indicator = document.getElementById('worker-status');
+  if (!indicator) return;
+  const set = message => { indicator.textContent = message; };
+  async function probe(){
+    if (!navigator.onLine || !['http:', 'https:'].includes(location.protocol)) {
+      set('Standalone/offline simulator — backend not connected.'); return;
+    }
+    try {
+      const response = await fetch('/api/health', {
+        method:'GET', headers:{Accept:'application/json'}, cache:'no-store',
+        credentials:'omit', redirect:'error', signal:AbortSignal.timeout(4500)
+      });
+      if (!response.ok) throw Error('Worker unavailable');
+      const data = await response.json();
+      if (data.name !== 'NcheNne' || data.mode !== 'fictional_only' ||
+          data.clinicalUse !== false || data.liveOperations !== false) {
+        set('Backend safety contract rejected — local simulator only.');
+        return;
+      }
+      const facilitiesResponse=await fetch('/api/facilities', {
+        method:'GET', headers:{Accept:'application/json'}, cache:'no-store',
+        credentials:'omit', redirect:'error', signal:AbortSignal.timeout(4500)
+      });
+      if (!facilitiesResponse.ok) throw Error('D1 unavailable');
+      const facilities=await facilitiesResponse.json();
+      if(facilities.demoOnly!==true || !Array.isArray(facilities.facilities) ||
+         !facilities.facilities.every(row=>row?.demoOnly===true)) {
+        set('Backend data rejected — non-fictional response.');return;
+      }
+      set('Fictional Cloudflare Worker and D1 connected ('+
+          facilities.facilities.length+' demo facilities). Browser scenario remains local.');
+    } catch {
+      set('Standalone fictional simulator — Worker/D1 not reachable or configured.');
+    }
+  }
+  probe();
+  window.addEventListener('online',probe);
+  window.addEventListener('offline',probe);
+})();
 </script>
 </body>
 </html>
