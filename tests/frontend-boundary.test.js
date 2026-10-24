@@ -17,7 +17,10 @@ test("browser does not embed an API owner token or automatically write to D1",()
  assert.doesNotMatch(html,/DEMO_API_TOKEN/);
  assert.doesNotMatch(html,/Authorization:\s*["']Bearer/i);
  assert.match(html,/method:'GET'/);
- assert.match(html,/credentials:'omit'/);
+ // Same-origin Access sessions are not app API secrets. This protects
+ // read-only endpoints while keeping owner-write tokens out of browser code.
+ assert.match(html,/credentials:'same-origin'/);
+ assert.doesNotMatch(html,/credentials:'omit'/);
 });
 test("PWA cache explicitly excludes API calls and real clinical state",()=>{
  assert.match(sw,/url\.pathname\.startsWith\("\/api\/"\)/);
