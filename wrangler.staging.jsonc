@@ -1,9 +1,9 @@
-// SAFE STAGING: No public workers.dev or preview URLs. Do not connect a custom domain before Cloudflare Access protection.
+// ACCESS-PROTECTED STAGING: Owner has enabled workers.dev with the Cloudflare Worker Access 'All traffic' exact-email policy. Do not deploy unless that policy remains applied. Preview URLs remain disabled.
 {
   "name": "nchenne-staging",
   "main": "worker/index.js",
   "compatibility_date": "2026-10-01",
-  "workers_dev": false,
+  "workers_dev": true,
   "preview_urls": false,
   "assets": {
     "directory": "./public",
