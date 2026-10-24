@@ -26,3 +26,10 @@ CREATE TABLE IF NOT EXISTS referral_events(
  actor TEXT NOT NULL CHECK(actor IN ('demo_coordinator','demo_facility_staff')),
  detail TEXT NOT NULL, at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_referrals_status ON referrals(status,updated_at);
+
+-- Status events are single-use in this acyclic demonstration. A duplicate
+-- concurrent transition aborts its entire D1 batch instead of double-logging.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_referral_event_single_status
+  ON referral_events(referral_id, status);
+-- The displayed fictional code is never an authentication credential.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_demo_referral_code ON referrals(code);
