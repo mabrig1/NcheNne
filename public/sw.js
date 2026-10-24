@@ -1,6 +1,6 @@
 // Offline caching is limited to static fictional demo assets; never cache API responses.
-const CACHE="nchenne-synthetic-shell-v02";
-const STATIC=["/","/index.html","/icon.svg","/manifest.webmanifest"];
+const CACHE="nchenne-synthetic-shell-v03";
+const STATIC=["/","/index.html","/icon.svg","/manifest.webmanifest","/demo-inspector.js"];
 self.addEventListener("install",e=>{
  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(STATIC)).then(()=>self.skipWaiting()));
 });
