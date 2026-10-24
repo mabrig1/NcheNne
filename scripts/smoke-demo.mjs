@@ -29,6 +29,19 @@ async function request(method,path,body,authenticated=true){
 const fixture={demoOnly:true};
 const wrong=await request("POST","/api/demo/seed",fixture,false);
 assert.equal(wrong.status,401,"Anonymous simulation writes must be refused");
+const healthResponse=await fetch(new URL("/api/health",base),{
+  method:"GET",cache:"no-store",redirect:"error",signal:AbortSignal.timeout(9000)
+});
+assert.equal(healthResponse.headers.get("x-robots-tag"),"noindex, nofollow, noarchive");
+assert.equal(healthResponse.headers.get("x-frame-options"),"DENY");
+assert.equal(healthResponse.headers.get("cache-control"),"no-store");
+const htmlResponse=await fetch(new URL("/",base),{
+  method:"GET",cache:"no-store",redirect:"error",signal:AbortSignal.timeout(9000)
+});
+assert.equal(htmlResponse.status,200);
+assert.equal(htmlResponse.headers.get("x-robots-tag"),"noindex, nofollow, noarchive");
+assert.equal(htmlResponse.headers.get("x-frame-options"),"DENY");
+assert.match(await htmlResponse.text(),/FICTIONAL DEMONSTRATION/);
 const health=await request("GET","/api/health",undefined,false);
 assert.equal(health.status,200);
 assert.equal(health.json.clinicalUse,false);
@@ -91,4 +104,4 @@ assert.equal(summary.json.facilities.eligibleFor.comprehensive,1);
 
 const extra=await request("POST",`/api/referrals/${id}/complete`,fixture);
 assert.notEqual(extra.status,200,"Duplicate completion should fail");
-console.log("PASS: fictional-only API, authorized create, facility acceptance, arrival, completion, event timeline and synthetic D1 aggregates, and rejection of identifiers, unavailable capacity, premature arrival and repeats.");
+console.log("PASS: fictional-only API, authorized create, facility acceptance, arrival, completion, event timeline and safe HTTP headers, synthetic D1 aggregates, and rejection of identifiers, unavailable capacity, premature arrival and repeats.");
