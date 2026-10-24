@@ -1,0 +1,20 @@
+# NEVER COMMIT demonstration authorization tokens or local credentials
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+# Local Cloudflare D1 and Worker state
+.wrangler/
+.wrangler-dry-run/
+wrangler-output/
+# Node artifacts
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
