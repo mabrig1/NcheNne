@@ -37,6 +37,16 @@ const seeded=await request("POST","/api/demo/seed",fixture);
 assert.equal(seeded.status,200);
 assert.equal(seeded.json.demoOnly,true);
 assert.ok(seeded.json.facilities.every(f=>f.demoOnly===true));
+const emptySummary=await request("GET","/api/demo/summary",undefined,false);
+assert.equal(emptySummary.status,200);
+assert.equal(emptySummary.json.demoOnly,true);
+assert.equal(emptySummary.json.clinicalUse,false);
+assert.equal(emptySummary.json.liveOperations,false);
+assert.equal(emptySummary.json.facilities.total,6);
+assert.equal(emptySummary.json.facilities.receiving,3);
+assert.equal(emptySummary.json.facilities.freshReceiving,2);
+assert.equal(emptySummary.json.referrals.total,0);
+
 const reported=await request("POST","/api/capacities/report",{
   demoOnly:true,facilityId:"REF-A",beds:3,skilled:true,theatre:true,blood:true
 });
@@ -71,6 +81,14 @@ assert.equal(list.status,200);
 const completed=list.json.referrals.find(r=>r.id===id);
 assert.equal(completed.status,"completed");
 assert.equal(completed.timeline.length,4);
+const summary=await request("GET","/api/demo/summary",undefined,false);
+assert.equal(summary.status,200);
+assert.equal(summary.json.mode,"fictional_only");
+assert.equal(summary.json.referrals.total,1);
+assert.equal(summary.json.referrals.byStatus.completed,1);
+assert.equal(summary.json.referrals.byStatus.offered,0);
+assert.equal(summary.json.facilities.eligibleFor.comprehensive,1);
+
 const extra=await request("POST",`/api/referrals/${id}/complete`,fixture);
 assert.notEqual(extra.status,200,"Duplicate completion should fail");
-console.log("PASS: fictional-only API, authorized create, facility acceptance, arrival, completion, event timeline and rejection of identifiers, unavailable capacity, premature arrival and repeats.");
+console.log("PASS: fictional-only API, authorized create, facility acceptance, arrival, completion, event timeline and synthetic D1 aggregates, and rejection of identifiers, unavailable capacity, premature arrival and repeats.");
