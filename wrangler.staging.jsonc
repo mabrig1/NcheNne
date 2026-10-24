@@ -1,0 +1,29 @@
+// ACCESS-PROTECTED STAGING: Owner has enabled workers.dev with the Cloudflare Worker Access 'All traffic' exact-email policy. Do not deploy unless that policy remains applied. Preview URLs remain disabled.
+{
+  "name": "nchenne-staging",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  },
+  "vars": {
+    "APP_MODE": "synthetic_demo",
+    "LIVE_CLINICAL_ENABLED": "false",
+    "OPENROUTER_ENABLED": "false",
+    "OPENROUTER_MODEL": ""
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nchenne_demo",
+      "database_id": "19bcb136-470c-4e71-a767-cd3c09b4230f",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

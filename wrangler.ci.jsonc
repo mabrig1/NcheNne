@@ -1,0 +1,27 @@
+// CI ONLY: dummy binding. Must never be used for a live deploy.
+{
+  "name": "nchenne-synthetic-ci-dry-run",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  },
+  "vars": {
+    "APP_MODE": "synthetic_demo",
+    "LIVE_CLINICAL_ENABLED": "false",
+    "OPENROUTER_ENABLED": "false",
+    "OPENROUTER_MODEL": ""
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nchenne_ci_placeholder_only",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
