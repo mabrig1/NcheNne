@@ -59,6 +59,17 @@ assert.equal(emptySummary.json.facilities.total,6);
 assert.equal(emptySummary.json.facilities.receiving,3);
 assert.equal(emptySummary.json.facilities.freshReceiving,2);
 assert.equal(emptySummary.json.referrals.total,0);
+const initialWatch=await request("GET","/api/demo/watchlist",undefined,false);
+assert.equal(initialWatch.status,200);
+assert.equal(initialWatch.json.demoOnly,true);
+assert.equal(initialWatch.json.clinicalUse,false);
+assert.equal(initialWatch.json.liveOperations,false);
+assert.equal(initialWatch.json.operationalCueOnly,true);
+assert.ok(initialWatch.json.cues.some(c=>c.kind==="capacity_unavailable"&&c.id==="REF-C"),
+  "A fictional receiving facility with zero beds must be flagged for review");
+assert.ok(initialWatch.json.cues.every(c=>!Object.hasOwn(c,"patientName")&&
+  !Object.hasOwn(c,"phone")&&!Object.hasOwn(c,"detail")));
+
 
 const reported=await request("POST","/api/capacities/report",{
   demoOnly:true,facilityId:"REF-A",beds:3,skilled:true,theatre:true,blood:true
@@ -101,7 +112,12 @@ assert.equal(summary.json.referrals.total,1);
 assert.equal(summary.json.referrals.byStatus.completed,1);
 assert.equal(summary.json.referrals.byStatus.offered,0);
 assert.equal(summary.json.facilities.eligibleFor.comprehensive,1);
+const closedWatch=await request("GET","/api/demo/watchlist",undefined,false);
+assert.equal(closedWatch.status,200);
+assert.equal(closedWatch.json.cues.some(c=>c.id===id),false,
+  "Completed fictional referral must not remain in manual-review queue");
+
 
 const extra=await request("POST",`/api/referrals/${id}/complete`,fixture);
 assert.notEqual(extra.status,200,"Duplicate completion should fail");
-console.log("PASS: fictional-only API, authorized create, facility acceptance, arrival, completion, event timeline and safe HTTP headers, synthetic D1 aggregates, and rejection of identifiers, unavailable capacity, premature arrival and repeats.");
+console.log("PASS: fictional-only API, simulated referral transitions, safe headers, D1 aggregate and watchlist, patient-field rejection and no premature arrival.");
