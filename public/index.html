@@ -68,6 +68,7 @@
         <button id="inspect-d1-button" class="btn btn-secondary btn-small" type="button" disabled aria-controls="inspect-d1-results">Inspect fictional D1 ledger (read-only)</button>
         <span style="font-size:11px;color:#517367">No credentials, patient data or external sends.</span>
       </div>
+      <div id="cloud-demo-summary" role="status" aria-live="polite" style="font-size:11px;margin-top:7px;color:#517367">Remote fictional statistics not connected.</div>
       <div id="inspect-d1-results" aria-live="polite" style="margin-top:8px;font-size:12px"></div>
     </aside>
     <section id="page-content" aria-live="polite"></section>
@@ -291,12 +292,14 @@ import {parseDemoLedger,renderDemoLedger} from './demo-inspector.js';
   const indicator = document.getElementById('worker-status');
   const button = document.getElementById('inspect-d1-button');
   const result = document.getElementById('inspect-d1-results');
-  if (!indicator || !button || !result) return;
+  const cloudSummary = document.getElementById('cloud-demo-summary');
+  if (!indicator || !button || !result || !cloudSummary) return;
   const set = message => { indicator.textContent = message; };
   let connected = false;
   async function probe(){
     connected=false;
     button.disabled=true;
+    cloudSummary.textContent='Remote fictional statistics not connected.';
     if (!navigator.onLine || !['http:', 'https:'].includes(location.protocol)) {
       set('Standalone/offline simulator — backend not connected.'); return;
     }
@@ -326,6 +329,29 @@ import {parseDemoLedger,renderDemoLedger} from './demo-inspector.js';
       button.disabled=false;
       set('Fictional Cloudflare Worker and D1 connected ('+
           facilities.facilities.length+' demo facilities). Browser scenario remains local.');
+      try{
+        const summaryResponse=await fetch('/api/demo/summary',{
+          method:'GET',headers:{Accept:'application/json'},
+          cache:'no-store',credentials:'omit',redirect:'error',
+          signal:AbortSignal.timeout(4500)
+        });
+        if(!summaryResponse.ok)throw Error('Synthetic aggregate missing');
+        const summary=await summaryResponse.json();
+        const numbers=[summary.facilities?.total,summary.facilities?.freshReceiving,
+                       summary.referrals?.total];
+        if(summary.demoOnly!==true||summary.mode!=='fictional_only'||
+           summary.clinicalUse!==false||summary.liveOperations!==false||
+           !numbers.every(n=>Number.isSafeInteger(n)&&n>=0)||
+           summary.facilities.total!==facilities.facilities.length||
+           summary.facilities.freshReceiving>summary.facilities.total)
+          throw Error('Unsafe or invalid fictional statistics');
+        cloudSummary.textContent='Read-only fictional D1 totals: '+
+          summary.facilities.total+' facilities · '+
+          summary.facilities.freshReceiving+' recently eligible receiving facilities · '+
+          summary.referrals.total+' synthetic referrals. No real care availability.';
+      }catch{
+        cloudSummary.textContent='Fictional D1 aggregates unavailable or rejected. Local scenario remains separate.';
+      }
     } catch {
       set('Standalone fictional simulator — Worker/D1 not reachable or configured.');
     }
