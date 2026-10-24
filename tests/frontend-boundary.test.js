@@ -35,3 +35,14 @@ test("fictional D1 summary is read-only and rejects unsafe network responses",()
  assert.match(html,/cloudSummary\.textContent=/);
  assert.doesNotMatch(html,/cloudSummary\.innerHTML=/);
 });
+
+test("fictional reviewer contains no owner token and never makes API writes",()=>{
+ assert.match(html,/id="review-demo-button"/);
+ assert.match(html,/id="review-demo-results"/);
+ assert.match(html,/parseDemoWatchlist\(await response\.json\(\)\)/);
+ assert.match(html,/renderDemoWatchlist\(reviewResult,safe\)/);
+ assert.match(html,/fetch\('\/api\/demo\/watchlist'/);
+ assert.match(html,/reviewResult\.textContent=/);
+ assert.doesNotMatch(html,/reviewResult\.innerHTML=/);
+ assert.match(sw,/demo-watchlist\.js/);
+});
