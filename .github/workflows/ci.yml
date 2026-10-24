@@ -28,3 +28,49 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: Bundle Worker and static assets (no auth, no deployment)
         run: npx wrangler deploy --dry-run --config wrangler.ci.jsonc --outdir .wrangler-dry-run
+
+  local-d1-smoke:
+    runs-on: ubuntu-latest
+    needs: [cloudflare-dry-run]
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - name: Apply schema and exercise a genuine local D1 Worker (no deployment)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler d1 migrations apply nchenne_ci_placeholder_only --local --config wrangler.ci.jsonc
+          TOKEN="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(48).toString("hex"))')"
+          printf 'DEMO_API_TOKEN=%s\n' "$TOKEN" > .dev.vars
+          chmod 600 .dev.vars
+          export DEMO_API_TOKEN="$TOKEN"
+          npx wrangler dev --config wrangler.ci.jsonc --ip 127.0.0.1 --port 8787 > /tmp/nchenne-worker.log 2>&1 &
+          worker_pid=$!
+          cleanup() {
+            kill "$worker_pid" 2>/dev/null || true
+            rm -f .dev.vars
+          }
+          trap cleanup EXIT
+          ready=0
+          for attempt in $(seq 1 40); do
+            if curl -fsS --max-time 2 http://127.0.0.1:8787/api/health >/dev/null; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$worker_pid" 2>/dev/null; then
+              echo "Local Worker exited unexpectedly."
+              tail -50 /tmp/nchenne-worker.log
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ "$ready" != "1" ]; then
+            echo "Local Worker did not start."
+            tail -50 /tmp/nchenne-worker.log
+            exit 1
+          fi
+          NCHENNE_BASE_URL=http://127.0.0.1:8787 npm run smoke:demo
