@@ -13,7 +13,7 @@
     "db:migrate:local": "wrangler d1 migrations apply nchenne_demo --local"
   },
   "devDependencies": {
-    "wrangler": "^4.45.0"
+    "wrangler": "4.152.0"
   },
   "engines": {
     "node": ">=20"
