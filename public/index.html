@@ -64,6 +64,11 @@
     <aside aria-label="Demonstration backend connection" style="background:#edf6f1;border:1px solid #d7e9dc;border-radius:10px;padding:10px 14px;margin:0 0 20px;color:#1f5444;font-size:12px;line-height:1.55">
       <strong>Simulation connection:</strong> <span id="worker-status" role="status" aria-live="polite">Checking fictional Worker API...</span>
       <div style="font-size:11px;margin-top:4px;color:#517367">The interactive referral cards below are a separate, browser-local simulation; they do not read or write Cloudflare D1.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:9px">
+        <button id="inspect-d1-button" class="btn btn-secondary btn-small" type="button" disabled aria-controls="inspect-d1-results">Inspect fictional D1 ledger (read-only)</button>
+        <span style="font-size:11px;color:#517367">No credentials, patient data or external sends.</span>
+      </div>
+      <div id="inspect-d1-results" aria-live="polite" style="margin-top:8px;font-size:12px"></div>
     </aside>
     <section id="page-content" aria-live="polite"></section>
   </main>
@@ -279,13 +284,19 @@ if('serviceWorker' in navigator && location.protocol==='https:')navigator.servic
 
 </script>
 
-<script>
+<script type="module">
+import {parseDemoLedger,renderDemoLedger} from './demo-inspector.js';
 /* Read-only synthetic Worker status. No tokens, private records, or mutations. */
 (() => {
   const indicator = document.getElementById('worker-status');
-  if (!indicator) return;
+  const button = document.getElementById('inspect-d1-button');
+  const result = document.getElementById('inspect-d1-results');
+  if (!indicator || !button || !result) return;
   const set = message => { indicator.textContent = message; };
+  let connected = false;
   async function probe(){
+    connected=false;
+    button.disabled=true;
     if (!navigator.onLine || !['http:', 'https:'].includes(location.protocol)) {
       set('Standalone/offline simulator — backend not connected.'); return;
     }
@@ -311,12 +322,34 @@ if('serviceWorker' in navigator && location.protocol==='https:')navigator.servic
          !facilities.facilities.every(row=>row?.demoOnly===true)) {
         set('Backend data rejected — non-fictional response.');return;
       }
+      connected=true;
+      button.disabled=false;
       set('Fictional Cloudflare Worker and D1 connected ('+
           facilities.facilities.length+' demo facilities). Browser scenario remains local.');
     } catch {
       set('Standalone fictional simulator — Worker/D1 not reachable or configured.');
     }
   }
+  button.addEventListener('click',async()=>{
+    if(!connected || !navigator.onLine){
+      result.textContent='Worker/D1 is not available; local simulation remains usable.';
+      return;
+    }
+    button.disabled=true;
+    result.textContent='Loading fictional referral summaries from D1...';
+    try {
+      const response=await fetch('/api/referrals',{
+        method:'GET',headers:{Accept:'application/json'},
+        cache:'no-store',credentials:'omit',redirect:'error',
+        signal:AbortSignal.timeout(4500)
+      });
+      if(!response.ok)throw Error('Not connected');
+      const entries=parseDemoLedger(await response.json());
+      renderDemoLedger(result,entries);
+    }catch{
+      result.textContent='Read-only demonstration records unavailable or rejected. No patient information was used.';
+    }finally{button.disabled=!connected;}
+  });
   probe();
   window.addEventListener('online',probe);
   window.addEventListener('offline',probe);
