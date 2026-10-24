@@ -155,3 +155,19 @@ evaluation. Clinical deployment must be a separate approved programme.
 
 **For an actual pregnancy emergency, seek immediate in-person medical care.**
 This simulator is not an emergency-contact or referral service.
+
+
+## Fictional coordination review queue
+
+The read-only `GET /api/demo/watchlist` endpoint highlights fictional
+administrative handoffs: stale sample capacity reports, zero-bed receiving
+facilities, sample offers without acknowledgment, accepted simulated referrals
+without arrival updates, and demonstration escalations. The optional browser
+review button retrieves a **bounded, sanitized, strictly fictional-only** view.
+There is no client API token, clinical AI, medical urgency score, automated
+messaging, transport dispatch or real patient monitoring.
+
+The simulated 10-minute offer and 30-minute arrival intervals are **UI exercise
+examples, not safe waiting periods or clinical performance standards**.
+See [fictional review cue rules](docs/COORDINATION_REVIEW_CUES.md) before
+changing the thresholds or showing the demo to healthcare partners.
