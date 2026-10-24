@@ -24,3 +24,14 @@ test("PWA cache explicitly excludes API calls and real clinical state",()=>{
  assert.match(config,/"LIVE_CLINICAL_ENABLED": "false"/);
  assert.match(config,/REPLACE_WITH_D1_DATABASE_ID/);
 });
+
+test("fictional D1 summary is read-only and rejects unsafe network responses",()=>{
+ assert.match(html,/id="cloud-demo-summary"/);
+ assert.match(html,/fetch\('\/api\/demo\/summary'/);
+ assert.match(html,/summary\.clinicalUse!==false/);
+ assert.match(html,/summary\.liveOperations!==false/);
+ assert.match(html,/summary\.demoOnly!==true/);
+ assert.match(html,/Number\.isSafeInteger/);
+ assert.match(html,/cloudSummary\.textContent=/);
+ assert.doesNotMatch(html,/cloudSummary\.innerHTML=/);
+});
