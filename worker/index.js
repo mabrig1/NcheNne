@@ -1,4 +1,5 @@
 import {NEEDS,eligible,createOffer,transition,validateOffer,iso} from "../src/domain.js";
+import {buildDemoWatchlist} from "../src/watchlist.js";
 const HEADERS={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
   "Content-Security-Policy":"default-src 'none'; frame-ancestors 'none'",
   "Referrer-Policy":"no-referrer","X-Frame-Options":"DENY",
@@ -34,14 +35,14 @@ async function parseDemo(req,keys){
  return obj;
 }
 async function facilities(db){
- const r=await db.prepare("SELECT f.id,f.display_name,f.district,f.type,f.active,c.beds,c.skilled,c.theatre,c.blood,c.updated_at,c.reported_by FROM facilities f LEFT JOIN capacity_reports c ON c.facility_id=f.id ORDER BY f.id").all();
+ const r=await db.prepare("SELECT f.id,f.display_name,f.district,f.type,f.active,c.beds,c.skilled,c.theatre,c.blood,c.updated_at,c.reported_by FROM facilities f LEFT JOIN capacity_reports c ON c.facility_id=f.id WHERE f.demo_only=1 ORDER BY f.id").all();
  return r.results.map(x=>({id:x.id,name:x.display_name,district:x.district,type:x.type,
    active:x.active===1,demoOnly:true,capacity:x.updated_at?{
    beds:x.beds,skilled:x.skilled===1,theatre:x.theatre===1,blood:x.blood===1,
    updatedAt:x.updated_at,reportedBy:x.reported_by}:null}));
 }
 async function getReferral(db,id){
- const row=await db.prepare("SELECT * FROM referrals WHERE id=?").bind(id).first();
+ const row=await db.prepare("SELECT * FROM referrals WHERE id=? AND demo_only=1").bind(id).first();
  if(!row)return null;
  const events=(await db.prepare("SELECT status,at,actor,detail FROM referral_events WHERE referral_id=? ORDER BY id").bind(id).all()).results;
  return {id:row.id,code:row.code,facilityId:row.facility_id,need:row.need,
@@ -89,8 +90,19 @@ async function api(req,env,path){
    });
  }
  if(req.method==="GET"&&path==="/api/referrals"){
-   const ids=(await env.DB.prepare("SELECT id FROM referrals ORDER BY created_at DESC LIMIT 100").all()).results;
+   const ids=(await env.DB.prepare("SELECT id FROM referrals WHERE demo_only=1 ORDER BY created_at DESC LIMIT 100").all()).results;
    return reply({demoOnly:true,referrals:await Promise.all(ids.map(x=>getReferral(env.DB,x.id)))});
+ }
+ if(req.method==="GET"&&path==="/api/demo/watchlist"){
+   // Read-only bounded administrative cues from fictional fixtures only.
+   const candidateRows=(await env.DB.prepare(
+     "SELECT id,facility_id,status,updated_at,demo_only FROM referrals WHERE demo_only=1 ORDER BY updated_at ASC LIMIT 100"
+   ).all()).results;
+   const samples=candidateRows.map(r=>({
+     id:r.id,facilityId:r.facility_id,status:r.status,
+     updatedAt:r.updated_at,demoOnly:r.demo_only===1
+   }));
+   return reply(buildDemoWatchlist(await facilities(env.DB),samples));
  }
  if(req.method!=="POST")return error("Not found",404);
  if(!(await requireOwner(req,env)))return error("Owner authorization required for demo writes",401);
