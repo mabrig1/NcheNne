@@ -11,7 +11,9 @@
   },
   "vars": {
     "APP_MODE": "synthetic_demo",
-    "LIVE_CLINICAL_ENABLED": "false"
+    "LIVE_CLINICAL_ENABLED": "false",
+    "OPENROUTER_ENABLED": "false",
+    "OPENROUTER_MODEL": ""
   },
   "d1_databases": [
     {
