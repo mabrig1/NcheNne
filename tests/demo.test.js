@@ -36,12 +36,29 @@ test("rejects identifying and non-fictional payloads",()=>{
  assert.throws(()=>validateOffer({...obj,phone:"+2348000000000"}));
  assert.throws(()=>validateOffer({...obj,demoOnly:false}));
 });
-test("health advertises nonclinical status",async()=>{
- const r=await worker.fetch(new Request("https://demo.invalid/api/health"),{});
+test("health advertises nonclinical status only for safe synthetic D1 configuration",async()=>{
+ const safe={APP_MODE:"synthetic_demo",LIVE_CLINICAL_ENABLED:"false",DB:{}};
+ const r=await worker.fetch(new Request("https://demo.invalid/api/health"),safe);
  assert.equal(r.status,200);
  const body=await r.json();
  assert.equal(body.clinicalUse,false);
  assert.equal(body.liveOperations,false);
+ assert.equal(body.ready,true);
+});
+test("health is not falsely ready with missing D1 or unsafe deployment mode",async()=>{
+ for(const env of [
+  {},{APP_MODE:"synthetic_demo",LIVE_CLINICAL_ENABLED:"false"},
+  {APP_MODE:"live",LIVE_CLINICAL_ENABLED:"false",DB:{}},
+  {APP_MODE:"synthetic_demo",LIVE_CLINICAL_ENABLED:"true",DB:{}}
+ ]){
+  const response=await worker.fetch(new Request("https://demo.invalid/api/health"),env);
+  assert.equal(response.status,503);
+  assert.equal(response.headers.get("cache-control"),"no-store");
+  const health=await response.json();
+  assert.equal(health.ready,false);
+  assert.equal(health.clinicalUse,false);
+  assert.equal(health.liveOperations,false);
+ }
 });
 test("clinical flag makes API fail closed",async()=>{
  const r=await worker.fetch(new Request("https://demo.invalid/api/facilities"),
