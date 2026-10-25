@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {STAGING_ORIGIN,READ_PATHS,validateStagingResponse,runStagingReadOnly,assertSmokeOrigin}
   from '../src/staging-preflight.js';
 const samples={
- '/api/health':{name:'NcheNne',version:'0.2.0',mode:'fictional_only',clinicalUse:false,liveOperations:false},
+ '/api/health':{name:'NcheNne',version:'0.2.0',mode:'fictional_only',clinicalUse:false,liveOperations:false,ready:true,schemaReady:true},
  '/api/demo/summary':{demoOnly:true,mode:'fictional_only',clinicalUse:false,liveOperations:false,facilities:{total:0},referrals:{total:0}},
  '/api/facilities':{demoOnly:true,facilities:[]},
  '/api/demo/watchlist':{demoOnly:true,mode:'fictional_only',clinicalUse:false,liveOperations:false,operationalCueOnly:true,cues:[]},
@@ -43,6 +43,15 @@ test('Access login redirect or denial fails closed without following redirect',a
    return {status:302,headers:new Headers({Location:'https://example.com/login'})};
  }}),/Access authentication required/);
  assert.equal(calls,1);
+});
+test('rejects a bound but unmigrated D1 or legacy health without schema evidence',()=>{
+ const current=samples['/api/health'];
+ assert.throws(()=>validateStagingResponse('/api/health',
+  {...current,ready:false}),/not proven fictional/);
+ assert.throws(()=>validateStagingResponse('/api/health',
+  {...current,schemaReady:false}),/not proven fictional/);
+ const old={...current}; delete old.schemaReady;
+ assert.throws(()=>validateStagingResponse('/api/health',old),/not proven fictional/);
 });
 test('missing safe flags or real facility identifiers are rejected',()=>{
  assert.throws(()=>validateStagingResponse('/api/health',
