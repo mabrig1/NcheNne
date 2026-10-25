@@ -324,6 +324,12 @@ import {parseDemoWatchlist,renderDemoWatchlist} from './demo-watchlist.js';
         set('Backend safety contract rejected — local simulator only.');
         return;
       }
+      // Only a schema-verified fictional D1 Worker can enable the remote
+      // inspector; the legacy 0.2.0 health response is not enough.
+      if (data.ready !== true || data.schemaReady !== true) {
+        set('Fictional Worker schema unverified — local simulator only.');
+        return;
+      }
       const facilitiesResponse=await fetch('/api/facilities', {
         method:'GET', headers:{Accept:'application/json'}, cache:'no-store',
         credentials:'same-origin', redirect:'error', signal:AbortSignal.timeout(4500)
