@@ -36,6 +36,8 @@ export function validateStagingResponse(path, body) {
   if (path === '/api/health') {
     ensure(body.name === 'NcheNne' && body.mode === 'fictional_only', 'Invalid fictional health response');
     ensure(body.clinicalUse === false && body.liveOperations === false, 'Clinical/live flag must remain false');
+    ensure(body.ready === true && body.schemaReady === true,
+      'Staging has not proven fictional D1 schema readiness; do not promote');
     ensure(typeof body.version === 'string', 'Missing Worker version');
     return {path, status:'passed',version:body.version};
   }
