@@ -37,13 +37,18 @@ test("rejects identifying and non-fictional payloads",()=>{
  assert.throws(()=>validateOffer({...obj,demoOnly:false}));
 });
 test("health advertises nonclinical status only for safe synthetic D1 configuration",async()=>{
- const safe={APP_MODE:"synthetic_demo",LIVE_CLINICAL_ENABLED:"false",DB:{}};
+ const safe={APP_MODE:"synthetic_demo",LIVE_CLINICAL_ENABLED:"false",DB:{
+   prepare:()=>({all:async()=>({results:[
+     {name:"capacity_reports"},{name:"facilities"},{name:"referral_events"},{name:"referrals"}
+   ]})})
+ }};
  const r=await worker.fetch(new Request("https://demo.invalid/api/health"),safe);
  assert.equal(r.status,200);
  const body=await r.json();
  assert.equal(body.clinicalUse,false);
  assert.equal(body.liveOperations,false);
  assert.equal(body.ready,true);
+ assert.equal(body.schemaReady,true);
 });
 test("health is not falsely ready with missing D1 or unsafe deployment mode",async()=>{
  for(const env of [
@@ -56,6 +61,7 @@ test("health is not falsely ready with missing D1 or unsafe deployment mode",asy
   assert.equal(response.headers.get("cache-control"),"no-store");
   const health=await response.json();
   assert.equal(health.ready,false);
+  assert.equal(health.schemaReady,false);
   assert.equal(health.clinicalUse,false);
   assert.equal(health.liveOperations,false);
  }
