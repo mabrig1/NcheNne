@@ -68,6 +68,18 @@ const seeded=await request("POST","/api/demo/seed",fixture);
 assert.equal(seeded.status,200);
 assert.equal(seeded.json.demoOnly,true);
 assert.ok(seeded.json.facilities.every(f=>f.demoOnly===true));
+// Seeding is intentionally INSERT OR IGNORE: old fictional capacity reports
+// expire after 45 min. Refresh only three fixed made-up receiving fixtures,
+// so rerunning a smoke test never relies on a newly empty database.
+for(const facility of [
+ {facilityId:"REF-A",beds:3,skilled:true,theatre:true,blood:true},
+ {facilityId:"REF-B",beds:2,skilled:true,theatre:false,blood:true},
+ {facilityId:"REF-C",beds:0,skilled:false,theatre:false,blood:false}
+]){
+ const r=await request("POST","/api/capacities/report",{demoOnly:true,...facility});
+ assert.equal(r.status,200,"Fictional receiving-facility refresh must succeed");
+ assert.equal(r.json.demoOnly,true);
+}
 const emptySummary=await request("GET","/api/demo/summary",undefined,false);
 assert.equal(emptySummary.status,200);
 assert.equal(emptySummary.json.demoOnly,true);
@@ -89,10 +101,6 @@ assert.ok(initialWatch.json.cues.every(c=>!Object.hasOwn(c,"patientName")&&
   !Object.hasOwn(c,"phone")&&!Object.hasOwn(c,"detail")));
 
 
-const reported=await request("POST","/api/capacities/report",{
-  demoOnly:true,facilityId:"REF-A",beds:3,skilled:true,theatre:true,blood:true
-});
-assert.equal(reported.status,200);
 // Fail-closed checks against real-looking or unsupported case data.
 const identifying=await request("POST","/api/referrals",{
   demoOnly:true,facilityId:"REF-A",need:"blood",id:"SIM-FAKE123456",phone:"+2348000000000"
