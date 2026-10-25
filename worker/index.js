@@ -50,8 +50,14 @@ async function getReferral(db,id){
    status:row.status,demoOnly:true,createdAt:row.created_at,updatedAt:row.updated_at,timeline:events};
 }
 async function api(req,env,path){
- if(req.method==="GET"&&path==="/api/health")
-   return reply({name:"NcheNne",version:"0.2.0",mode:"fictional_only",clinicalUse:false,liveOperations:false});
+ if(req.method==="GET"&&path==="/api/health"){
+   // Readiness is not proof of clinical capability. Fail closed if a deploy
+   // accidentally enables live mode or has no fictional D1 binding.
+   const ready=env.APP_MODE==="synthetic_demo"&&
+     env.LIVE_CLINICAL_ENABLED==="false"&&!!env.DB;
+   return reply({name:"NcheNne",version:"0.2.0",mode:"fictional_only",
+     clinicalUse:false,liveOperations:false,ready},ready?200:503);
+ }
  if(env.APP_MODE!=="synthetic_demo"||env.LIVE_CLINICAL_ENABLED!=="false")
    return error("Live clinical mode is unsupported",503);
  if(!env.DB)return error("Fictional D1 database is not configured",503);
