@@ -7,16 +7,25 @@
  */
 import assert from "node:assert/strict";
 import {randomBytes} from "node:crypto";
+import {assertSmokeOrigin,STAGING_ORIGIN} from "../src/staging-preflight.js";
 
-const base=new URL(process.env.NCHENNE_BASE_URL||"http://127.0.0.1:8787");
-if(!["http:","https:"].includes(base.protocol)||base.username||base.password||
-   base.pathname!=="/"||base.search||base.hash)throw Error("Use a bare test API origin");
-if(base.protocol!=="https:"&&!["localhost","127.0.0.1","[::1]"].includes(base.hostname))
-   throw Error("Refusing to send demo token to an insecure remote host");
+const base=assertSmokeOrigin(
+  process.env.NCHENNE_BASE_URL||"http://127.0.0.1:8787",
+  process.env.NCHENNE_REMOTE_DEMO_SMOKE
+);
+// Remote smoke performs WRITES only after explicit owner opt-in, and only
+// against the exact staging hostname. Never use the production domain.
+const accessId=process.env.CF_ACCESS_CLIENT_ID;
+const accessSecret=process.env.CF_ACCESS_CLIENT_SECRET;
+if(Boolean(accessId)!==Boolean(accessSecret))
+  throw Error("Cloudflare Access service credentials must be configured together");
+const accessHeaders=base.origin===STAGING_ORIGIN&&accessId
+  ?{"CF-Access-Client-Id":accessId,"CF-Access-Client-Secret":accessSecret}
+  :{};
 const token=process.env.DEMO_API_TOKEN;
 if(!token||token.length<24)throw Error("Provide your demo-only DEMO_API_TOKEN in the shell environment");
 async function request(method,path,body,authenticated=true){
- const headers={Accept:"application/json"};
+ const headers={Accept:"application/json",...accessHeaders};
  if(body!==undefined)headers["Content-Type"]="application/json";
  if(authenticated)headers.Authorization="Bearer "+token;
  const response=await fetch(new URL(path,base),{
@@ -30,13 +39,13 @@ const fixture={demoOnly:true};
 const wrong=await request("POST","/api/demo/seed",fixture,false);
 assert.equal(wrong.status,401,"Anonymous simulation writes must be refused");
 const healthResponse=await fetch(new URL("/api/health",base),{
-  method:"GET",cache:"no-store",redirect:"error",signal:AbortSignal.timeout(9000)
+  method:"GET",headers:accessHeaders,cache:"no-store",redirect:"error",signal:AbortSignal.timeout(9000)
 });
 assert.equal(healthResponse.headers.get("x-robots-tag"),"noindex, nofollow, noarchive");
 assert.equal(healthResponse.headers.get("x-frame-options"),"DENY");
 assert.equal(healthResponse.headers.get("cache-control"),"no-store");
 const htmlResponse=await fetch(new URL("/",base),{
-  method:"GET",cache:"no-store",redirect:"error",signal:AbortSignal.timeout(9000)
+  method:"GET",headers:accessHeaders,cache:"no-store",redirect:"error",signal:AbortSignal.timeout(9000)
 });
 assert.equal(htmlResponse.status,200);
 assert.equal(htmlResponse.headers.get("x-robots-tag"),"noindex, nofollow, noarchive");
