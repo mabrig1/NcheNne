@@ -28,7 +28,7 @@ test("all five read-only staging API calls preserve same-origin Access credentia
 });
 test("fictional offline shell still never caches protected API responses",()=>{
   assert.match(sw,/url\.pathname\.startsWith\("\/api\/"\)\)return;/);
-  assert.match(sw,/nchenne-synthetic-shell-v05/);
+  assert.match(sw,/nchenne-synthetic-shell-v06/);
 });
 test("staging's owner-enabled URL stays on while previews remain off",()=>{
   assert.match(stage,/"name": "nchenne-staging"/);
