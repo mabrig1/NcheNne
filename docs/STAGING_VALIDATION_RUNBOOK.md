@@ -201,3 +201,62 @@ existing records need not be cleared; it does not authorize a remote write.
    guarded synthetic remote transaction smoke; keep production unchanged.
 
 No new production or clinical capability is approved by this phase.
+
+
+## Phase 6: exact remote D1 identity audit (GET-only Cloudflare REST API)
+
+The Cloudflare dashboard audit transcribed an ambiguous D1 name:
+`chenne_demo`, while the reviewed Wrangler staging configuration names
+`nchenne_demo`. **Do not guess or rewrite the database identity.** The
+new `npm run audit:cloudflare:read` command resolves the discrepancy by
+comparing three live Cloudflare GET responses with the checked-in configuration:
+
+- `GET /accounts/{account_id}/workers/scripts/nchenne-staging/settings` —
+  the **existing staging Worker's actual D1 UUID and nonsecret environment
+  variables** (never reads or prints token values).
+- `GET /accounts/{account_id}/d1/database/{checked-in-staging-uuid}` —
+  the actual D1 database's UUID and registered name.
+- `GET /accounts/{account_id}/workers/scripts/nchenne-staging/subdomain` —
+  verifies workers.dev is on and preview URLs remain off.
+
+The script **never** issues POST, PUT, PATCH or DELETE; it cannot seed D1,
+query SQL rows, deploy, alter DNS, change Access or touch the existing
+`nchenne` production Worker. It outputs booleans only; it does not print raw
+Cloudflare Worker metadata, database rows, API tokens or identities.
+
+This capability uses Cloudflare's documented read-only REST endpoints. It
+requires an existing, **least-privilege** API token authorized for
+`Workers Scripts Read` and `D1 Read`, and the correct account ID. Do not
+create a new token, broaden token permissions, pay for an account, or modify
+existing settings solely for this preflight unless separately approved.
+
+Run **locally** with credentials set **privately on your machine**, not
+copied into GitHub, messages or screenshots:
+
+```powershell
+Set-Location 'C:\Users\user\NcheNne'
+git switch engineering/staging-preflight-20261025
+git pull --ff-only
+npm.cmd install --no-audit --no-fund
+npm.cmd run check
+npm.cmd run audit:staging:config
+# In the PRIVATE shell, securely set:
+#   CLOUDFLARE_ACCOUNT_ID = your existing Cloudflare account ID
+#   CLOUDFLARE_API_TOKEN  = an existing least-privilege read-only API token
+npm.cmd run audit:cloudflare:read
+```
+
+If either variable is unavailable, **stop without changing Cloudflare**.
+The tool fails closed and no live verification can be claimed. Cloudflare
+dashboard sign-in via the TinyFish profile does not automatically confer an API
+token in your local Windows shell.
+
+A passed D1 audit would establish the expected remote database UUID/name and
+Worker binding match. It explicitly **does not** establish the full Worker-level
+Cloudflare Access policy, the allow rule or the deployed source commit, and
+does not authorize a remote write or deployment. These remain separate owner
+review gates.
+
+**Reference:** Cloudflare API, *Get Worker Script and Version Settings*;
+*Get D1 Database*; *Get Worker Subdomain*. Check the documentation for the
+permissions required by your existing Cloudflare token.
