@@ -11,6 +11,8 @@ test("browser distinguishes local role-play from Worker/D1 state",()=>{
  assert.match(html,/separate, browser-local simulation/);
  assert.match(html,/data\.clinicalUse !== false/);
  assert.match(html,/data\.liveOperations !== false/);
+ assert.match(html,/data\.ready !== true/);
+ assert.match(html,/data\.schemaReady !== true/);
  assert.match(html,/facilities\.demoOnly!==true/);
 });
 test("browser does not embed an API owner token or automatically write to D1",()=>{
