@@ -10,7 +10,8 @@
     "smoke:demo": "node scripts/smoke-demo.mjs",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:migrate:local": "wrangler d1 migrations apply nchenne_demo --local"
+    "db:migrate:local": "wrangler d1 migrations apply nchenne_demo --local",
+    "verify:staging:read": "node scripts/verify-staging-readonly.mjs"
   },
   "devDependencies": {
     "wrangler": "4.152.0"
