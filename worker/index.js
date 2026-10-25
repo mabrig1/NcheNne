@@ -1,6 +1,7 @@
 import {NEEDS,eligible,createOffer,transition,validateOffer,iso} from "../src/domain.js";
 import {buildDemoWatchlist} from "../src/watchlist.js";
 import {openRouterStatus,explainFictionalScenario} from "../src/openrouter.js";
+import {checkFictionalReadiness} from "../src/readiness.js";
 const HEADERS={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
   "Content-Security-Policy":"default-src 'none'; frame-ancestors 'none'",
   "Referrer-Policy":"no-referrer","X-Frame-Options":"DENY",
@@ -51,12 +52,11 @@ async function getReferral(db,id){
 }
 async function api(req,env,path){
  if(req.method==="GET"&&path==="/api/health"){
-   // Readiness is not proof of clinical capability. Fail closed if a deploy
-   // accidentally enables live mode or has no fictional D1 binding.
-   const ready=env.APP_MODE==="synthetic_demo"&&
-     env.LIVE_CLINICAL_ENABLED==="false"&&!!env.DB;
+   // A binding alone is not enough: check that fictional D1 migrations
+   // installed every expected table. SQL or account details never leak.
+   const {ready,schemaReady}=await checkFictionalReadiness(env);
    return reply({name:"NcheNne",version:"0.2.0",mode:"fictional_only",
-     clinicalUse:false,liveOperations:false,ready},ready?200:503);
+     clinicalUse:false,liveOperations:false,ready,schemaReady},ready?200:503);
  }
  if(env.APP_MODE!=="synthetic_demo"||env.LIVE_CLINICAL_ENABLED!=="false")
    return error("Live clinical mode is unsupported",503);
