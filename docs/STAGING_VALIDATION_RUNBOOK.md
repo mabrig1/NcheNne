@@ -140,3 +140,64 @@ The audit function also has deterministic Node tests for corrupt records.
 The exact staging D1 resource name/UUID and actual live deployed commit remain
 unverified release gates. Passing the restart test is **not** permission to
 modify the remotely deployed Worker or change Cloudflare settings.
+
+
+## Phase 5: schema readiness and safe release fingerprint
+
+The prior health check only established that a D1 binding object existed. That
+does **not** prove the D1 migrations were applied. The upgraded
+`GET /api/health` now queries the fictional D1 SQLite schema for four required
+table names (`facilities`, `capacity_reports`, `referrals`,
+`referral_events`). Only with the correct synthetic mode, disabled clinical
+mode and all four table names does it return HTTP 200 with
+`ready:true` and `schemaReady:true`; it otherwise fails closed with HTTP 503.
+These flags prove table presence, not clinical suitability, complete schema
+correctness or remote deployed-commit provenance.
+
+The read-only staging CLI and UI now **require both readiness flags** before
+showing remote D1 as connected. The existing private staging Worker was checked
+before this change and did not yet expose those flags, so the new CLI will
+correctly mark that deployment unverified until the upgraded code is safely
+deployed. Do not disable Cloudflare Access or promote the code to make it pass.
+
+The purely **local** release candidate audit:
+
+```powershell
+npm.cmd run audit:staging:config
+```
+
+checks the Worker name, URL/preview flags, lack of custom routes, fictional
+runtime settings, expected one D1 binding, and absence of checked-in secrets.
+It prints the candidate git SHA and SHA-256 of the staging config. It also
+prints `accessPolicyVerified:false`, `remoteDatabaseVerified:false` and
+`deployedCommitVerified:false` on purpose: repository inspection can never
+satisfy those Cloudflare account-level gates.
+
+GitHub CI now runs the staging config audit before the Cloudflare bundle dry-run,
+and it runs the synthetic local D1 smoke **twice** against the same database.
+The smoke explicitly refreshes fixed `REF-A`, `REF-B` and `REF-C` fictional
+capacity reports, because reports expire after 45 minutes while the seed
+operation intentionally preserves existing rows. The repeated local test proves
+existing records need not be cleared; it does not authorize a remote write.
+
+### Exact next safe release steps
+
+1. In Cloudflare account, read-only inspect the existing Worker named
+   `nchenne-staging`. Match the actual binding ID, name and account to the
+   checked-in `wrangler.staging.jsonc`, resolving the previously transcribed
+   `chenne_demo` versus `nchenne_demo` discrepancy.
+2. Read-only inspect Worker-level Cloudflare Access policy: owner-only allow
+   criteria; **All traffic** includes the exact workers.dev hostname and
+   `/api/*`; preview URLs stay disabled. Do not widen the allowlist.
+3. Record current staging Worker version, deployment provenance and rollback
+   point before changing it.
+4. Obtain a separately explicit approval for staging-only code deployment;
+   run `npm.cmd run check` and `npm.cmd run audit:staging:config`, compare the
+   remote binding with the checked-in ID and perform a dry-run before deploying.
+5. Verify the upgraded `GET /api/health` returns HTTP 200 with
+   `ready:true`, `schemaReady:true`, `clinicalUse:false` and
+   `liveOperations:false`. Then run the five GET-only staging preflight checks.
+6. Only after a second explicit approval for fictional D1 writes, use the
+   guarded synthetic remote transaction smoke; keep production unchanged.
+
+No new production or clinical capability is approved by this phase.
