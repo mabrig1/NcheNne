@@ -76,6 +76,9 @@ jobs:
             exit 1
           fi
           NCHENNE_BASE_URL=http://127.0.0.1:8787 npm run smoke:demo
+          # Run against the SAME local D1 database twice to prove repeatability,
+          # without resetting fixtures, deleting events or overwriting referrals.
+          NCHENNE_BASE_URL=http://127.0.0.1:8787 npm run smoke:demo
 
           # A successful smoke test is insufficient: prove the fictional D1
           # ledger survives termination and a fresh Worker process.
