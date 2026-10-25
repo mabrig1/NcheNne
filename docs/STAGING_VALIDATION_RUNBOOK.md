@@ -112,3 +112,31 @@ Access authentication remains enforced.
    ledger versus deliberately separate local simulated role-play.
 6. Keep PR(s) draft and production unchanged until explicit owner approval.
    Passing CI or HTTP 200 does not authorize a production or clinical rollout.
+
+
+## Local D1 durability proof added after initial preflight
+
+The synthetic smoke now records a **baseline referral count** and verifies a
+single increment without clearing, truncating or reinitializing any database.
+This avoids requiring a pristine database whenever the local test runs.
+
+The CI `local-d1-smoke` job now stops its local Wrangler process **after**
+running the fictional transaction sequence, verifies the original process is
+gone, starts a fresh local Wrangler process against the same persisted test D1
+state, and executes:
+
+```powershell
+npm.cmd run verify:local:persistence
+```
+
+That GET-only script verifies a persisted `SIM-` referral contains exactly four
+ordered `offered → accepted → arrived → completed` audit events, strict
+fictional IDs and actors, and consistent D1 completion aggregates. Any missing
+events, non-fictional IDs, out-of-order history or real-world/clinical flags fail
+closed. It never writes records and it refuses remote hosts. This proves
+**local D1 persistence across a Worker restart, not remote D1 durability**.
+The audit function also has deterministic Node tests for corrupt records.
+
+The exact staging D1 resource name/UUID and actual live deployed commit remain
+unverified release gates. Passing the restart test is **not** permission to
+modify the remotely deployed Worker or change Cloudflare settings.
