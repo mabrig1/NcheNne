@@ -36,6 +36,11 @@ There is **no operational data exchange with either application**.
   referral as an active clinical case.
 - Optimistic state-version checks and atomic D1 update/event batches for synthetic
   referral event history; unique demo referral-code and event constraints.
+- Fail-closed health/readiness when fictional D1 is unbound or live mode is
+  accidentally enabled; `clinicalUse` and `liveOperations` remain false.
+- Repeatable fictional local D1 smoke tests, persistence across an actual
+  Worker restart, and dual-request acceptance concurrency verification in CI.
+  **These do not establish remote database durability or clinical safety.**
 
 ## Code review and verification
 
@@ -136,10 +141,18 @@ flowchart TD
 
 ## Release blockers and governance
 
-There is **no remotely provisioned D1 database, protected Cloudflare preview,
-custom domain or patient-validated application** in this work. Do not use
-`wrangler.ci.jsonc` for remote deployment. `robots.txt` and
+**A separately named private fictional staging Worker now exists.** On
+25 October 2026, authenticated checks of the Access-protected
+`nchenne-staging.victoryonline1.workers.dev` returned HTTP 200 for health,
+fictional aggregate and facility endpoints. The D1 aggregates contained
+**zero fictional facilities/referrals** at that point; no remote writes were run.
+The exact live D1 database identity and deployed GitHub commit provenance have
+**not yet been conclusively reconciled**. This repository remains a nonclinical
+demonstration, not a patient-validated application. The existing
+`nchenne.mabrigkorie.org` production Worker is separate and unchanged.
+Do not use `wrangler.ci.jsonc` for remote deployment. `robots.txt` and
 `<meta name="robots">` reduce indexing but do **not** secure access.
+See [verified staging audit and release gates](docs/STAGING_VALIDATION_RUNBOOK.md).
 
 Before an **isolated fictional** hosted preview, review account scope, cost
 implications and private access controls. See
