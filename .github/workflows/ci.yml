@@ -114,3 +114,4 @@ jobs:
             exit 1
           fi
           NCHENNE_BASE_URL=http://127.0.0.1:8787 npm run verify:local:persistence
+          NCHENNE_BASE_URL=http://127.0.0.1:8787 npm run verify:local:concurrency
