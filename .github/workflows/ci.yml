@@ -14,6 +14,8 @@ jobs:
         with:
           node-version: "22"
       - run: npm run check
+      - name: Validate reviewed isolated staging configuration (no Cloudflare calls)
+        run: npm run audit:staging:config
       - run: test -f public/index.html
       - run: grep -q "FICTIONAL DEMONSTRATION" public/index.html
 
