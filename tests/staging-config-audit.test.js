@@ -37,6 +37,17 @@ test('rejects unprotected/preview URLs and dangerous configuration',()=>{
  ])
   assert.throws(()=>validateStagingConfig(source));
 });
+test('rejects unreviewed resource sections, extra flags and D1 settings',()=>{
+ for(const source of [
+  mutate(c=>{c.kv_namespaces=[{binding:'REAL_DATA',id:'id'}];}),
+  mutate(c=>{c.r2_buckets=[{binding:'UPLOADS',bucket_name:'demo'}];}),
+  mutate(c=>{c.routes=['example.invalid/*'];}),
+  mutate(c=>{c.vars.SEND_REAL_NOTIFICATIONS='true';}),
+  mutate(c=>{c.vars.DEMO_API_TOKEN='secret';}),
+  mutate(c=>{c.assets.experimental_option=true;}),
+  mutate(c=>{c.d1_databases[0].preview_database_id='another-db';})
+ ]) assert.throws(()=>validateStagingConfig(source));
+});
 test('refuses missing/multiple/unreviewed D1 bindings',()=>{
  for(const source of [
   mutate(c=>{c.d1_databases=[];}),

@@ -209,3 +209,13 @@ clinical inputs or database records are sent to the provider.
 
 See the exact manual configuration steps in
 [OpenRouter setup](docs/OPENROUTER_CONFIGURATION.md).
+
+
+### Engineering review hardening (31 October 2026)
+
+The draft-only staging checks now reject unreviewed Cloudflare bindings and
+resource/variable configuration. The fixed-host, GET-only preflight also checks
+`/api/demo/ai/status` to require that optional AI inference remains disabled.
+These gates do **not** authenticate Cloudflare Access scope or prove a remotely
+deployed commit. See `docs/STAGING_VALIDATION_RUNBOOK.md`; no clinical use,
+remote writes, paid inference or production deployment is authorized.

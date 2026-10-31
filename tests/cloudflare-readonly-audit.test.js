@@ -53,6 +53,19 @@ test('refuses Workers missing assets or core fictional-only flags',()=>{
   o=>{o.workerSettings.bindings.push({type:'plain_text',name:'APP_MODE',text:'synthetic_demo'});}
  ]){const o=good();change(o);assert.throws(()=>check(o));}
 });
+test('remote audit fails closed on unreviewed secrets, resources or duplicate binding names',()=>{
+ for(const change of [
+  o=>{o.workerSettings.bindings.push({type:'kv_namespace',name:'REAL_DATA'});},
+  o=>{o.workerSettings.bindings.push({type:'r2_bucket',name:'UPLOADS'});},
+  o=>{o.workerSettings.bindings.push({type:'secret_text',name:'PATIENT_API_KEY'});},
+  o=>{o.workerSettings.bindings.push({type:'plain_text',name:'LIVE_OPERATIONS',text:'true'});},
+  o=>{o.workerSettings.bindings.push({type:'secret_text',name:'DEMO_API_TOKEN'});},
+  o=>{o.workerSettings.bindings[0].type='service';},
+  o=>{o.workerSettings.bindings[7].type='plain_text';}
+ ]){
+  const o=good();change(o);assert.throws(()=>check(o),/Unexpected or duplicated staging binding/);
+ }
+});
 test('disabled workers.dev and enabled previews are unsafe',()=>{
  for(const change of [
   o=>{o.subdomain.enabled=false;},

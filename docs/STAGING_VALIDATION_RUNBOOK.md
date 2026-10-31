@@ -37,10 +37,11 @@ The command targets **only**
 to a public, clinical or production hostname. It requests only:
 
 1. `GET /api/health`
-2. `GET /api/demo/summary`
-3. `GET /api/facilities`
-4. `GET /api/demo/watchlist`
-5. `GET /api/referrals`
+2. `GET /api/demo/ai/status` (must prove disabled and not ready)
+3. `GET /api/demo/summary`
+4. `GET /api/facilities`
+5. `GET /api/demo/watchlist`
+6. `GET /api/referrals`
 
 No `POST`, Cloudflare deployment, migration, seeding, provisioning or configuration
 write is possible from this command. Responses are validated for synthetic mode,
@@ -65,7 +66,7 @@ paste secret values into GitHub, chats, screen recordings or CI logs for this ta
 The CLI refuses an incomplete token pair and does not follow login redirects.
 
 An alternative is authenticated manual browser inspection: use the saved
-Cloudflare Access profile to open the five GET URLs. This is already sufficient
+Cloudflare Access profile to open the six GET URLs. This is already sufficient
 to establish that the health, summary and facilities endpoints return correctly,
 but **not** that write paths, persistence and audit ordering work remotely.
 
@@ -196,7 +197,7 @@ existing records need not be cleared; it does not authorize a remote write.
    remote binding with the checked-in ID and perform a dry-run before deploying.
 5. Verify the upgraded `GET /api/health` returns HTTP 200 with
    `ready:true`, `schemaReady:true`, `clinicalUse:false` and
-   `liveOperations:false`. Then run the five GET-only staging preflight checks.
+   `liveOperations:false`. Then run the six GET-only staging preflight checks.
 6. Only after a second explicit approval for fictional D1 writes, use the
    guarded synthetic remote transaction smoke; keep production unchanged.
 
@@ -260,3 +261,27 @@ review gates.
 **Reference:** Cloudflare API, *Get Worker Script and Version Settings*;
 *Get D1 Database*; *Get Worker Subdomain*. Check the documentation for the
 permissions required by your existing Cloudflare token.
+
+
+## Phase 7: reviewed bindings and AI-off verification (31 October 2026)
+
+- The **local** staging-config gate now rejects additional top-level Cloudflare resource
+  sections (KV/R2/queues/routes), unreviewed environment variables, unexpected
+  assets settings and D1 properties. This is an exact allowlist of the current
+  isolated fictional Worker config, not a general-purpose Wrangler validator.
+- The **remote read-only** Cloudflare metadata checker now rejects unknown,
+  duplicated or mistyped bindings, including any extra database, paid resource,
+  secret or potentially clinical feature flag. Only the reviewed DB/ASSETS,
+  fictional settings and optional server-only demo secret names are allowed.
+  No secret values are inspected, printed or transmitted elsewhere.
+- The private staging HTTP preflight now performs **six GET requests**. The new
+  `/api/demo/ai/status` check must report `enabled:false`, `ready:false`,
+  `reason:"disabled"` with only the reviewed fictional response keys. It never
+  starts inference or uses an OpenRouter key.
+- These stricter checks may deliberately fail on older or differently configured
+  staging. **Do not loosen them to obtain a green result.** Investigate the
+  configuration discrepancy privately. No Cloudflare account setting, D1 row,
+  Access policy, live Worker or production domain was changed by this code update.
+- CI/local tests establish implementation behavior only. They do not establish
+  actual Cloudflare Access coverage, live staging version provenance, or
+  suitability for real patients. Remote deployments and writes remain separately gated.

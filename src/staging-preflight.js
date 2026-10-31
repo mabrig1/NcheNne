@@ -1,7 +1,7 @@
 /** Read-only contract checks for the one isolated fictional staging origin. */
 export const STAGING_ORIGIN = 'https://nchenne-staging.victoryonline1.workers.dev';
 export const READ_PATHS = Object.freeze([
-  '/api/health', '/api/demo/summary', '/api/facilities',
+  '/api/health', '/api/demo/ai/status', '/api/demo/summary', '/api/facilities',
   '/api/demo/watchlist', '/api/referrals'
 ]);
 const PRIVATE_KEYS = new Set([
@@ -42,6 +42,17 @@ export function validateStagingResponse(path, body) {
     return {path, status:'passed',version:body.version};
   }
   ensure(body.demoOnly === true, 'Expected explicitly fictional response');
+  if (path === '/api/demo/ai/status') {
+    const keys=['demoOnly','mode','enabled','ready','freeModelOnly',
+      'requiresHumanReview','reason'];
+    ensure(Object.keys(body).length===keys.length&&
+      Object.keys(body).every(key=>keys.includes(key))&&
+      body.mode==='fictional_only'&&body.enabled===false&&
+      body.ready===false&&body.freeModelOnly===true&&
+      body.requiresHumanReview===true&&body.reason==='disabled',
+      'Remote fictional AI must be explicitly disabled without additional fields');
+    return {path,status:'passed',enabled:false};
+  }
   if (path === '/api/demo/summary') {
     ensure(body.mode === 'fictional_only' && body.clinicalUse === false && body.liveOperations === false,
       'Summary must refuse clinical/live operations');

@@ -6,12 +6,25 @@
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function ensure(ok,detail){if(!ok)throw Error(detail);}
 function object(v){return v!==null&&typeof v==='object'&&!Array.isArray(v);}
+const CONFIG_KEYS=new Set(['name','main','compatibility_date','workers_dev',
+ 'preview_urls','assets','vars','d1_databases']);
+const ASSET_KEYS=new Set(['directory','binding','run_worker_first']);
+const VAR_KEYS=new Set(['APP_MODE','LIVE_CLINICAL_ENABLED',
+ 'OPENROUTER_ENABLED','OPENROUTER_MODEL']);
+const DB_KEYS=new Set(['binding','database_name','database_id','migrations_dir']);
+function exactKeys(value,allowed){
+ return object(value) && Object.keys(value).length===allowed.size &&
+   Object.keys(value).every(key=>allowed.has(key));
+}
 export function validateStagingConfig(source){
  ensure(typeof source==='string','Missing staging configuration');
  const json=source.replace(/^\s*\/\/[^\n]*\n/,'');
  let c;
  try{c=JSON.parse(json);}catch{throw Error('Invalid staging JSONC');}
  ensure(object(c),'Invalid staging configuration');
+ ensure(exactKeys(c,CONFIG_KEYS),'Unreviewed staging configuration section; do not deploy');
+ ensure(exactKeys(c.assets,ASSET_KEYS),'Unreviewed staging assets settings');
+ ensure(exactKeys(c.vars,VAR_KEYS),'Unreviewed staging variables or bindings');
  ensure(c.name==='nchenne-staging','Refusing any non-staging Worker name');
  ensure(c.main==='worker/index.js','Unexpected Worker entrypoint');
  ensure(c.workers_dev===true && c.preview_urls===false,
@@ -31,6 +44,7 @@ export function validateStagingConfig(source){
  ensure(Array.isArray(c.d1_databases)&&c.d1_databases.length===1,
   'Expected one isolated fictional D1 binding');
  const db=c.d1_databases[0];
+ ensure(exactKeys(db,DB_KEYS),'Unreviewed fictional D1 settings');
  ensure(object(db)&&db.binding==='DB'&&db.database_name==='nchenne_demo'&&
   typeof db.database_id==='string'&&UUID.test(db.database_id)&&
   db.migrations_dir==='migrations','Unreviewed D1 target');

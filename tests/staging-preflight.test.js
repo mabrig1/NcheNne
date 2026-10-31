@@ -4,6 +4,7 @@ import {STAGING_ORIGIN,READ_PATHS,validateStagingResponse,runStagingReadOnly,ass
   from '../src/staging-preflight.js';
 const samples={
  '/api/health':{name:'NcheNne',version:'0.2.0',mode:'fictional_only',clinicalUse:false,liveOperations:false,ready:true,schemaReady:true},
+ '/api/demo/ai/status':{demoOnly:true,mode:'fictional_only',enabled:false,ready:false,freeModelOnly:true,requiresHumanReview:true,reason:'disabled'},
  '/api/demo/summary':{demoOnly:true,mode:'fictional_only',clinicalUse:false,liveOperations:false,facilities:{total:0},referrals:{total:0}},
  '/api/facilities':{demoOnly:true,facilities:[]},
  '/api/demo/watchlist':{demoOnly:true,mode:'fictional_only',clinicalUse:false,liveOperations:false,operationalCueOnly:true,cues:[]},
@@ -18,10 +19,10 @@ function mockFetch(calls,alter={}) {
      headers:{'Content-Type':alter.contentType||'application/json'}});
  };
 }
-test('fixed staging origin and five GET-only routes',async()=>{
+test('fixed staging origin and six GET-only routes including AI-off check',async()=>{
  const calls=[];
  const results=await runStagingReadOnly({fetchImpl:mockFetch(calls)});
- assert.equal(results.length,5);
+ assert.equal(results.length,6);
  assert.deepEqual(calls.map(x=>x.url),READ_PATHS.map(p=>STAGING_ORIGIN+p));
  assert.ok(calls.every(x=>x.options.method==='GET' && x.options.redirect==='manual' &&
    x.options.cache==='no-store' && !('Authorization' in x.options.headers)));
@@ -52,6 +53,18 @@ test('rejects a bound but unmigrated D1 or legacy health without schema evidence
   {...current,schemaReady:false}),/not proven fictional/);
  const old={...current}; delete old.schemaReady;
  assert.throws(()=>validateStagingResponse('/api/health',old),/not proven fictional/);
+});
+test('remote AI must be off even if Cloudflare bindings look safe',()=>{
+ const good=samples['/api/demo/ai/status'];
+ assert.equal(validateStagingResponse('/api/demo/ai/status',good).enabled,false);
+ for(const bad of [
+  {...good,enabled:true},
+  {...good,ready:true},
+  {...good,reason:'ready'},
+  {...good,clinicalUse:true},
+  {...good,mode:'clinical'}
+ ]) assert.throws(()=>validateStagingResponse('/api/demo/ai/status',bad),
+   /Remote fictional AI|forbidden identifying/);
 });
 test('missing safe flags or real facility identifiers are rejected',()=>{
  assert.throws(()=>validateStagingResponse('/api/health',

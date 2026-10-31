@@ -1,5 +1,5 @@
 /**
- * Five safe GET requests against the one private NcheNne staging hostname.
+ * Six safe GET requests against the one private NcheNne staging hostname.
  * Never disables Cloudflare Access. Never performs POSTs, seed, or migrations.
  * Optional Cloudflare Access service credentials must be scoped by the owner to
  * this staging application only; never paste them into chat or logs.

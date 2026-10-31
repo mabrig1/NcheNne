@@ -12,6 +12,13 @@ const EXPECTED_BINDINGS=Object.freeze({
   OPENROUTER_ENABLED:'false',OPENROUTER_MODEL:''
 });
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+const ALLOWED_BINDING_TYPES=Object.freeze({
+ DB:'d1',ASSETS:'assets',
+ APP_MODE:'plain_text',LIVE_CLINICAL_ENABLED:'plain_text',
+ OPENROUTER_ENABLED:'plain_text',OPENROUTER_MODEL:'plain_text',
+ // Optional server-side secrets are names only; never inspect their values.
+ DEMO_API_TOKEN:'secret_text',OPENROUTER_API_KEY:'secret_text'
+});
 const DB_NAME='nchenne_demo';
 const WORKER_NAME='nchenne-staging';
 function ensure(ok,message){ if(!ok)throw new Error(message); }
@@ -27,6 +34,17 @@ export function auditCloudflareStagingMetadata(workerSettings,database,subdomain
  ensure(database.uuid===expectedDbId && database.name===DB_NAME,
    'Remote D1 name/UUID does not match the checked-in fictional database');
  const bindings=workerSettings.bindings;
+ // Do not approve an unknown resource, secret, duplicate name, extra live
+ // feature flag, or unexpected binding type in this isolated demo Worker.
+ const seen=new Set();
+ for(const binding of bindings){
+   ensure(object(binding)&&typeof binding.name==='string'&&
+     Object.hasOwn(ALLOWED_BINDING_TYPES,binding.name)&&
+     ALLOWED_BINDING_TYPES[binding.name]===binding.type&&
+     !seen.has(binding.name),
+     'Unexpected or duplicated staging binding; do not deploy');
+   seen.add(binding.name);
+ }
  const dbBindings=bindings.filter(b=>b?.type==='d1');
  ensure(dbBindings.length===1 && dbBindings[0].name==='DB'&&
    (dbBindings[0].database_id??dbBindings[0].id)===expectedDbId,
