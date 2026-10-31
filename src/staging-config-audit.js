@@ -24,7 +24,7 @@ export function validateStagingConfig(source){
  ensure(object(c),'Invalid staging configuration');
  ensure(exactKeys(c,CONFIG_KEYS),'Unreviewed staging configuration section; do not deploy');
  ensure(exactKeys(c.assets,ASSET_KEYS),'Unreviewed staging assets settings');
- ensure(exactKeys(c.vars,VAR_KEYS),'Unreviewed staging variables or bindings');
+ ensure(exactKeys(c.vars,VAR_KEYS),'Unreviewed staging variables or credentials');
  ensure(c.name==='nchenne-staging','Refusing any non-staging Worker name');
  ensure(c.main==='worker/index.js','Unexpected Worker entrypoint');
  ensure(c.workers_dev===true && c.preview_urls===false,
