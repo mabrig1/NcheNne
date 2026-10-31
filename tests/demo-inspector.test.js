@@ -60,5 +60,5 @@ test("caps remote results and renders only textContent DOM nodes",()=>{
 test("offline service worker caches inspection code but never any API data",()=>{
  const sw=readFileSync(new URL("../public/sw.js",import.meta.url),"utf8");
  assert.match(sw,/\/demo-inspector\.js/);
- assert.match(sw,/pathname\.startsWith\("\/api\/"\)/);
+ assert.match(sw,/pathname\.startsWith\(path\+"api\/"\)/);
 });

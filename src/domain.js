@@ -6,10 +6,11 @@ export const NEEDS = Object.freeze({
 const TRANSITIONS = {
   offered:["accepted","declined","escalated","expired"],
   accepted:["arrived","escalated"],
-  escalated:["arrived","declined","expired"],
+  escalated:["accepted","declined","expired"],
   arrived:["completed"], declined:[], expired:[], completed:[]
 };
 export const TTL_MS=45*60*1000;
+export const OFFER_WINDOW_MS=10*60*1000; // Illustrative fiction only; NOT clinical timeout guidance.
 export const iso=(millis=Date.now())=>new Date(millis).toISOString();
 export function reportIsFresh(c,now=Date.now()) {
  if(!c || c.reportedBy!=="demo_facility_staff") return false;
@@ -35,6 +36,13 @@ export function transition(r,next,actor,now=Date.now()){
  const expected=["accepted","arrived","completed"].includes(next)?"demo_facility_staff":"demo_coordinator";
  if(actor!==expected) throw new Error("Wrong demonstration actor");
  if(now<Date.parse(r.updatedAt)) throw new Error("Out-of-order event");
+ // A timed-out fictional offer must never be accepted merely because an
+ // earlier simulated status was escalated. Real clinical timing is NOT modeled.
+ if(next==="accepted"){
+   const created=Date.parse(r.createdAt),age=now-created;
+   if(!Number.isFinite(age)||age<0||age>=OFFER_WINDOW_MS)
+     throw new Error("Fictional offer expired; start a separate synthetic offer");
+ }
  return {...r,status:next,updatedAt:iso(now),
   timeline:[...r.timeline,{status:next,at:iso(now),actor,
    detail:"Simulated "+next+" event. No real person, facility or service involved."}]};

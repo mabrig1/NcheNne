@@ -11,6 +11,8 @@ test("browser distinguishes local role-play from Worker/D1 state",()=>{
  assert.match(html,/separate, browser-local simulation/);
  assert.match(html,/data\.clinicalUse !== false/);
  assert.match(html,/data\.liveOperations !== false/);
+ assert.match(html,/data\.ready !== true/);
+ assert.match(html,/data\.schemaReady !== true/);
  assert.match(html,/facilities\.demoOnly!==true/);
 });
 test("browser does not embed an API owner token or automatically write to D1",()=>{
@@ -23,7 +25,7 @@ test("browser does not embed an API owner token or automatically write to D1",()
  assert.doesNotMatch(html,/credentials:'omit'/);
 });
 test("PWA cache explicitly excludes API calls and real clinical state",()=>{
- assert.match(sw,/url\.pathname\.startsWith\("\/api\/"\)/);
+ assert.match(sw,/url\.pathname\.startsWith\(path\+"api\/"\)/);
  assert.match(config,/"LIVE_CLINICAL_ENABLED": "false"/);
  assert.match(config,/REPLACE_WITH_D1_DATABASE_ID/);
 });
@@ -48,4 +50,53 @@ test("fictional reviewer contains no owner token and never makes API writes",()=
  assert.match(html,/reviewResult\.textContent=/);
  assert.doesNotMatch(html,/reviewResult\.innerHTML=/);
  assert.match(sw,/demo-watchlist\.js/);
+});
+
+test("offline/browser role-play rejects escalation bypass and supports manual/local expiry",()=>{
+ const standalone=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ for(const page of [html,standalone]){
+  assert.match(page,/escalated: \['accepted', 'declined', 'expired'\]/);
+  assert.doesNotMatch(page,/escalated:\[\['Confirm arrival/);
+  assert.match(page,/OFFER_TTL_MS = 10 \* 60 \* 1000/);
+  assert.match(page,/function expireLocalOffers/);
+  assert.match(page,/\['Expire','expired'\]/);
+  assert.match(page,/data-view="ecosystem"/);
+  assert.doesNotMatch(page,/<section id="page-content" aria-live=/);
+  assert.match(page,/const STATE_VERSION=2/);
+  assert.match(page,/serviceWorker\.register\('\.\/sw\.js'\)/);
+ }
+ assert.match(html,/href="\.\/manifest\.webmanifest"/);
+ assert.match(sw,/const STATIC=\["\.\/",/);
+});
+
+test("guided demo and ranked choices stay local, synthetic and nonclinical",()=>{
+ const standalone=readFileSync(new URL("../NcheNne_Interactive_Demo.html",import.meta.url),"utf8");
+ for(const page of [html,standalone]){
+  assert.match(page,/data-action="tour-start"/);
+  assert.match(page,/function tourStart\(\)/);
+  assert.match(page,/function tourClose\(\)/);
+  assert.match(page,/function candidatePicker\(\)/);
+  assert.match(page,/illustrativeScore/);
+  assert.match(page,/getCandidates\(state\.facilities,pendingNeed\)/);
+  assert.match(page,/function reofferSynthetic/);
+  assert.match(page,/data-action="export-timeline"/);
+  assert.match(page,/Synthetic research indicators only/);
+  assert.match(page,/network-diagram/);
+  assert.match(page,/role="progressbar"|id="tour-meter"/);
+  assert.doesNotMatch(page,/data-action="call-ambulance"/);
+ }
+ assert.doesNotMatch(standalone,/<script[^>]*src=/i);
+ assert.doesNotMatch(standalone,/<link[^>]*href="https?:/i);
+ assert.doesNotMatch(standalone,/import\s*\{/);
+});
+
+test("interim static CSP blocks external resources without breaking embedded scripts",()=>{
+ for(const p of ["index.html","public/index.html","NcheNne_Interactive_Demo.html"]){
+  const page=readFileSync(new URL("../"+p,import.meta.url),"utf8");
+  assert.match(page,/http-equiv="Content-Security-Policy"/);
+  assert.match(page,/default-src 'none'/);
+  assert.match(page,/connect-src 'self'/);
+  assert.match(page,/object-src 'none'/);
+  assert.doesNotMatch(page,/script-src[^"]*https?:/);
+ }
 });

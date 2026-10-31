@@ -14,6 +14,8 @@ jobs:
         with:
           node-version: "22"
       - run: npm run check
+      - name: Validate reviewed isolated staging configuration (no Cloudflare calls)
+        run: npm run audit:staging:config
       - run: test -f public/index.html
       - run: grep -q "FICTIONAL DEMONSTRATION" public/index.html
 
@@ -50,7 +52,7 @@ jobs:
           printf 'DEMO_API_TOKEN=%s\n' "$TOKEN" > .dev.vars
           chmod 600 .dev.vars
           export DEMO_API_TOKEN="$TOKEN"
-          npx wrangler dev --config wrangler.ci.jsonc --ip 127.0.0.1 --port 8787 > /tmp/nchenne-worker.log 2>&1 &
+          ./node_modules/.bin/wrangler dev --config wrangler.ci.jsonc --ip 127.0.0.1 --port 8787 > /tmp/nchenne-worker.log 2>&1 &
           worker_pid=$!
           cleanup() {
             kill "$worker_pid" 2>/dev/null || true
@@ -76,3 +78,45 @@ jobs:
             exit 1
           fi
           NCHENNE_BASE_URL=http://127.0.0.1:8787 npm run smoke:demo
+          # Run against the SAME local D1 database twice to prove repeatability,
+          # without resetting fixtures, deleting events or overwriting referrals.
+          NCHENNE_BASE_URL=http://127.0.0.1:8787 npm run smoke:demo
+
+          # A successful smoke test is insufficient: prove the fictional D1
+          # ledger survives termination and a fresh Worker process.
+          kill "$worker_pid"
+          wait "$worker_pid" 2>/dev/null || true
+          stopped=0
+          for attempt in $(seq 1 20); do
+            if ! curl -fsS --max-time 1 http://127.0.0.1:8787/api/health >/dev/null 2>&1; then
+              stopped=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$stopped" != 1 ]; then
+            echo "Old local Worker still running; cannot prove a restart."
+            exit 1
+          fi
+          ./node_modules/.bin/wrangler dev --config wrangler.ci.jsonc --ip 127.0.0.1 --port 8787 > /tmp/nchenne-restarted.log 2>&1 &
+          worker_pid=$!
+          ready=0
+          for attempt in $(seq 1 40); do
+            if curl -fsS --max-time 2 http://127.0.0.1:8787/api/health >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$worker_pid" 2>/dev/null; then
+              echo "Restarted local Worker exited unexpectedly."
+              tail -50 /tmp/nchenne-restarted.log
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ "$ready" != 1 ]; then
+            echo "Restarted local Worker did not start."
+            tail -50 /tmp/nchenne-restarted.log
+            exit 1
+          fi
+          NCHENNE_BASE_URL=http://127.0.0.1:8787 npm run verify:local:persistence
+          NCHENNE_BASE_URL=http://127.0.0.1:8787 npm run verify:local:concurrency

@@ -36,11 +36,16 @@ There is **no operational data exchange with either application**.
   referral as an active clinical case.
 - Optimistic state-version checks and atomic D1 update/event batches for synthetic
   referral event history; unique demo referral-code and event constraints.
+- Fail-closed health/readiness when fictional D1 is unbound or live mode is
+  accidentally enabled; `clinicalUse` and `liveOperations` remain false.
+- Repeatable fictional local D1 smoke tests, persistence across an actual
+  Worker restart, and dual-request acceptance concurrency verification in CI.
+  **These do not establish remote database durability or clinical safety.**
 
 ## Code review and verification
 
-This work is staged in the **draft** [PR #1](https://github.com/mabrig1/NcheNne/pull/1).
-Do not merge or publish as clinical software based on a passing build.
+The Worker/D1 foundation is staged in **draft** [PR #1](https://github.com/mabrig1/NcheNne/pull/1), while the security preflight, offline-demo and UX upgrade are stacked in **draft** [PR #2](https://github.com/mabrig1/NcheNne/pull/2).
+Neither PR is merged. Do not publish or treat this as clinical software based on passing CI.
 
 On GitHub Actions the quality gate runs:
 ```bash
@@ -136,10 +141,18 @@ flowchart TD
 
 ## Release blockers and governance
 
-There is **no remotely provisioned D1 database, protected Cloudflare preview,
-custom domain or patient-validated application** in this work. Do not use
-`wrangler.ci.jsonc` for remote deployment. `robots.txt` and
+**A separately named private fictional staging Worker now exists.** On
+25 October 2026, authenticated checks of the Access-protected
+`nchenne-staging.victoryonline1.workers.dev` returned HTTP 200 for health,
+fictional aggregate and facility endpoints. The D1 aggregates contained
+**zero fictional facilities/referrals** at that point; no remote writes were run.
+The exact live D1 database identity and deployed GitHub commit provenance have
+**not yet been conclusively reconciled**. This repository remains a nonclinical
+demonstration, not a patient-validated application. The existing
+`nchenne.mabrigkorie.org` production Worker is separate and unchanged.
+Do not use `wrangler.ci.jsonc` for remote deployment. `robots.txt` and
 `<meta name="robots">` reduce indexing but do **not** secure access.
+See [verified staging audit and release gates](docs/STAGING_VALIDATION_RUNBOOK.md).
 
 Before an **isolated fictional** hosted preview, review account scope, cost
 implications and private access controls. See
@@ -196,3 +209,80 @@ clinical inputs or database records are sent to the provider.
 
 See the exact manual configuration steps in
 [OpenRouter setup](docs/OPENROUTER_CONFIGURATION.md).
+
+
+### Engineering review hardening (31 October 2026)
+
+The draft-only staging checks now reject unreviewed Cloudflare bindings and
+resource/variable configuration. The fixed-host, GET-only preflight also checks
+`/api/demo/ai/status` to require that optional AI inference remains disabled.
+These gates do **not** authenticate Cloudflare Access scope or prove a remotely
+deployed commit. See `docs/STAGING_VALIDATION_RUNBOOK.md`; no clinical use,
+remote writes, paid inference or production deployment is authorized.
+
+
+### Third-party review: safety-first quick fixes (31 October 2026)
+
+The draft browser simulation and Worker state machine now prevent the
+`escalated → arrived` shortcut; an explicit simulated acceptance is required.
+An escalated offer may go to `accepted` only while the fictional offer window
+remains valid, or to `declined`/`expired`. A **10-minute illustrative
+fictional clock** blocks late acceptance and the browser automatically expires
+outstanding local offers while open; manual expiry is available. It is
+**not** a medical response-time target, real emergency alert, Worker cron
+schedule or remote D1 expiry task.
+
+Browser session state is now versioned; older session fixtures reset to
+avoid stale schema replay. Mobile navigation includes Ecosystem, whole-page
+live announcements were removed and hosted PWA paths are relative for
+subpath hosting. The service worker caches only static fictional shell assets
+within its own scope and never caches `api/` responses.
+
+The repository root `index.html` remains the single-page, browser-local
+standalone simulation; `public/index.html` adds strictly read-only Worker
+inspector integration and must be served with companion static scripts.
+Do **not** claim that a full PWA is installable on `file://`; service workers
+require an eligible secure origin. These changes do not confer clinical readiness.
+
+
+### Stakeholder-ready fictional-demo UX additions (31 October 2026)
+
+- **Guided walkthrough:** one click runs six narrated-text local-only steps:
+  refresh sample report, evaluate fully eligible fictional matches, create offer,
+  accept, arrive and complete. It never sends data to Worker/D1, dispatch or
+  external services. The Stop button cancels the timed presentation.
+- **Network diagram:** three made-up PHCs and three made-up receiving sites
+  connected by illustrative lines, expressly **not a map** or live directory.
+- **Illustrative ranking:** only already fully eligible fictional facilities are
+  ranked by sample beds and report freshness. There is **no clinical triage,
+  proximity inference, partial-match suggestion or real transport planning**.
+  Coordinator role-play selects an eligible facility. Declined or expired
+  attempts can produce a *new separate fictional offer* without modifying
+  previous immutable local timeline entries.
+- **Research demo indicators:** mean fictional offer-to-accept and offer-to-arrival
+  durations, plus locally downloadable timestamped role-event CSV. They
+  represent only a simulated browser exercise, not real service performance.
+- **Standalone downloadable artifact:** `NcheNne_Interactive_Demo.html`
+  contains the browser-local simulation, inline styles, and zero network imports.
+  Download and open it directly for a no-server stakeholder demonstration.
+  On a `file://` URL it is **not a PWA**; the separate hosted `public/`
+  application has extra read-only D1 components.
+
+**Future scope, not implemented:** QR/phone handoff, real routing and distance
+scores, clinical case-profile logic, validated translation/TTS, external
+feedback, TypeScript refactor, real event sourcing, and real patient workflow.
+These require separate safeguards, research or clinical review.
+
+
+### Stakeholder documentation
+
+- [One-page synthetic/nonclinical safety sheet](docs/PROTOTYPE_SAFETY_ONE_PAGE.md) — share alongside screenshots or exports.
+- [Fictional-network design and research methodology](docs/FICTIONAL_NETWORK_METHODS.md) — documents fixture selection, illustrative sorting, limitations and safe non-identifying feedback.
+- Licensing is **not yet chosen** by the repository owner; absence of a LICENSE file must not be interpreted as permission to reuse clinical or proprietary materials.
+
+
+The browser HTML now includes an interim restrictive **meta CSP**:
+external scripts, connections and objects are denied; the existing inline
+JavaScript/CSS remain permitted while the zero-import standalone artifact is
+maintained. This is not a substitute for reviewed HTTP response CSP headers or
+an eventual nonce/hash-based strict policy.
