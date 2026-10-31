@@ -219,3 +219,27 @@ resource/variable configuration. The fixed-host, GET-only preflight also checks
 These gates do **not** authenticate Cloudflare Access scope or prove a remotely
 deployed commit. See `docs/STAGING_VALIDATION_RUNBOOK.md`; no clinical use,
 remote writes, paid inference or production deployment is authorized.
+
+
+### Third-party review: safety-first quick fixes (31 October 2026)
+
+The draft browser simulation and Worker state machine now prevent the
+`escalated → arrived` shortcut; an explicit simulated acceptance is required.
+An escalated offer may go to `accepted` only while the fictional offer window
+remains valid, or to `declined`/`expired`. A **10-minute illustrative
+fictional clock** blocks late acceptance and the browser automatically expires
+outstanding local offers while open; manual expiry is available. It is
+**not** a medical response-time target, real emergency alert, Worker cron
+schedule or remote D1 expiry task.
+
+Browser session state is now versioned; older session fixtures reset to
+avoid stale schema replay. Mobile navigation includes Ecosystem, whole-page
+live announcements were removed and hosted PWA paths are relative for
+subpath hosting. The service worker caches only static fictional shell assets
+within its own scope and never caches `api/` responses.
+
+The repository root `index.html` remains the single-page, browser-local
+standalone simulation; `public/index.html` adds strictly read-only Worker
+inspector integration and must be served with companion static scripts.
+Do **not** claim that a full PWA is installable on `file://`; service workers
+require an eligible secure origin. These changes do not confer clinical readiness.

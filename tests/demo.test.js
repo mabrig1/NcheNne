@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {reportIsFresh,eligible,createOffer,transition,validateOffer} from "../src/domain.js";
+import {reportIsFresh,eligible,createOffer,transition,validateOffer,OFFER_WINDOW_MS} from "../src/domain.js";
 import worker from "../worker/index.js";
 const T=Date.parse("2026-10-24T07:00:00Z");
 const facility={id:"REF-A",name:"Fictional Hospital",district:"Abakaliki",
@@ -29,6 +29,18 @@ test("enforces human event ordering and simulated roles",()=>{
  r=transition(r,"arrived","demo_facility_staff",T+2);
  r=transition(r,"completed","demo_facility_staff",T+3);
  assert.equal(r.status,"completed");
+});
+test("escalation cannot bypass explicit acceptance and aged offers cannot be accepted",()=>{
+ let r=createOffer(facility,"skilled","SIM-GUARD123",T);
+ r=transition(r,"escalated","demo_coordinator",T+1);
+ assert.throws(()=>transition(r,"arrived","demo_facility_staff",T+2),
+  /Invalid synthetic transition/);
+ assert.throws(()=>transition(r,"accepted","demo_facility_staff",T+OFFER_WINDOW_MS),
+  /Fictional offer expired/);
+ const accepted=transition(r,"accepted","demo_facility_staff",T+2);
+ assert.equal(accepted.status,"accepted");
+ const arrived=transition(accepted,"arrived","demo_facility_staff",T+3);
+ assert.equal(arrived.timeline.filter(e=>e.status==="accepted").length,1);
 });
 test("rejects identifying and non-fictional payloads",()=>{
  const obj={demoOnly:true,facilityId:"REF-A",need:"blood",id:"SIM-ABC12345"};

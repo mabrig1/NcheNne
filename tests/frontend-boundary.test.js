@@ -25,7 +25,7 @@ test("browser does not embed an API owner token or automatically write to D1",()
  assert.doesNotMatch(html,/credentials:'omit'/);
 });
 test("PWA cache explicitly excludes API calls and real clinical state",()=>{
- assert.match(sw,/url\.pathname\.startsWith\("\/api\/"\)/);
+ assert.match(sw,/url\.pathname\.startsWith\(path\+"api\/"\)/);
  assert.match(config,/"LIVE_CLINICAL_ENABLED": "false"/);
  assert.match(config,/REPLACE_WITH_D1_DATABASE_ID/);
 });
@@ -50,4 +50,21 @@ test("fictional reviewer contains no owner token and never makes API writes",()=
  assert.match(html,/reviewResult\.textContent=/);
  assert.doesNotMatch(html,/reviewResult\.innerHTML=/);
  assert.match(sw,/demo-watchlist\.js/);
+});
+
+test("offline/browser role-play rejects escalation bypass and supports manual/local expiry",()=>{
+ const standalone=readFileSync(new URL("../index.html",import.meta.url),"utf8");
+ for(const page of [html,standalone]){
+  assert.match(page,/escalated: \['accepted', 'declined', 'expired'\]/);
+  assert.doesNotMatch(page,/escalated:\[\['Confirm arrival/);
+  assert.match(page,/OFFER_TTL_MS = 10 \* 60 \* 1000/);
+  assert.match(page,/function expireLocalOffers/);
+  assert.match(page,/\['Expire','expired'\]/);
+  assert.match(page,/data-view="ecosystem"/);
+  assert.doesNotMatch(page,/<section id="page-content" aria-live=/);
+  assert.match(page,/const STATE_VERSION=2/);
+  assert.match(page,/serviceWorker\.register\('\.\/sw\.js'\)/);
+ }
+ assert.match(html,/href="\.\/manifest\.webmanifest"/);
+ assert.match(sw,/const STATIC=\["\.\/",/);
 });
