@@ -44,8 +44,8 @@ There is **no operational data exchange with either application**.
 
 ## Code review and verification
 
-This work is staged in the **draft** [PR #1](https://github.com/mabrig1/NcheNne/pull/1).
-Do not merge or publish as clinical software based on a passing build.
+The Worker/D1 foundation is staged in **draft** [PR #1](https://github.com/mabrig1/NcheNne/pull/1), while the security preflight, offline-demo and UX upgrade are stacked in **draft** [PR #2](https://github.com/mabrig1/NcheNne/pull/2).
+Neither PR is merged. Do not publish or treat this as clinical software based on passing CI.
 
 On GitHub Actions the quality gate runs:
 ```bash
