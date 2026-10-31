@@ -68,3 +68,24 @@ test("offline/browser role-play rejects escalation bypass and supports manual/lo
  assert.match(html,/href="\.\/manifest\.webmanifest"/);
  assert.match(sw,/const STATIC=\["\.\/",/);
 });
+
+test("guided demo and ranked choices stay local, synthetic and nonclinical",()=>{
+ const standalone=readFileSync(new URL("../NcheNne_Interactive_Demo.html",import.meta.url),"utf8");
+ for(const page of [html,standalone]){
+  assert.match(page,/data-action="tour-start"/);
+  assert.match(page,/function tourStart\(\)/);
+  assert.match(page,/function tourClose\(\)/);
+  assert.match(page,/function candidatePicker\(\)/);
+  assert.match(page,/illustrativeScore/);
+  assert.match(page,/getCandidates\(state\.facilities,pendingNeed\)/);
+  assert.match(page,/function reofferSynthetic/);
+  assert.match(page,/data-action="export-timeline"/);
+  assert.match(page,/Synthetic research indicators only/);
+  assert.match(page,/network-diagram/);
+  assert.match(page,/role="progressbar"|id="tour-meter"/);
+  assert.doesNotMatch(page,/data-action="call-ambulance"/);
+ }
+ assert.doesNotMatch(standalone,/<script[^>]*src=/i);
+ assert.doesNotMatch(standalone,/<link[^>]*href="https?:/i);
+ assert.doesNotMatch(standalone,/import\s*\{/);
+});

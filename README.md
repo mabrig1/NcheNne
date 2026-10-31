@@ -243,3 +243,32 @@ standalone simulation; `public/index.html` adds strictly read-only Worker
 inspector integration and must be served with companion static scripts.
 Do **not** claim that a full PWA is installable on `file://`; service workers
 require an eligible secure origin. These changes do not confer clinical readiness.
+
+
+### Stakeholder-ready fictional-demo UX additions (31 October 2026)
+
+- **Guided walkthrough:** one click runs six narrated-text local-only steps:
+  refresh sample report, evaluate fully eligible fictional matches, create offer,
+  accept, arrive and complete. It never sends data to Worker/D1, dispatch or
+  external services. The Stop button cancels the timed presentation.
+- **Network diagram:** three made-up PHCs and three made-up receiving sites
+  connected by illustrative lines, expressly **not a map** or live directory.
+- **Illustrative ranking:** only already fully eligible fictional facilities are
+  ranked by sample beds and report freshness. There is **no clinical triage,
+  proximity inference, partial-match suggestion or real transport planning**.
+  Coordinator role-play selects an eligible facility. Declined or expired
+  attempts can produce a *new separate fictional offer* without modifying
+  previous immutable local timeline entries.
+- **Research demo indicators:** mean fictional offer-to-accept and offer-to-arrival
+  durations, plus locally downloadable timestamped role-event CSV. They
+  represent only a simulated browser exercise, not real service performance.
+- **Standalone downloadable artifact:** `NcheNne_Interactive_Demo.html`
+  contains the browser-local simulation, inline styles, and zero network imports.
+  Download and open it directly for a no-server stakeholder demonstration.
+  On a `file://` URL it is **not a PWA**; the separate hosted `public/`
+  application has extra read-only D1 components.
+
+**Future scope, not implemented:** QR/phone handoff, real routing and distance
+scores, clinical case-profile logic, validated translation/TTS, external
+feedback, TypeScript refactor, real event sourcing, and real patient workflow.
+These require separate safeguards, research or clinical review.

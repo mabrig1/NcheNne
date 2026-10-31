@@ -26,7 +26,15 @@
 @media(max-width:640px){.top-warning{font-size:9px;padding:6px 7px}.top-warning strong{font-size:9px}.top-warning .disclaimer-mobile{display:inline}.sidebar{display:none}.main-content{padding:0 15px 115px}.topbar{height:64px;margin-bottom:21px}.network-status{font-size:10px}.breadcrumb{font-size:11px}.topbar-controls{gap:9px}select#language{max-width:96px;padding:9px 5px;font-size:11px}.page-title{font-size:24px;letter-spacing:-.6px}.page-intro{flex-direction:column;gap:14px;margin:0 0 19px}.page-subtitle{font-size:12px}.page-intro .buttons{width:100%}.hero{min-height:224px}.hero-main{padding:24px}.hero-visual{position:absolute;right:-80px;opacity:.3;height:100%}.hero h2{font-size:24px;max-width:260px}.hero p{font-size:11px;max-width:265px}.hero-actions .btn{padding:9px 12px;min-height:36px;font-size:11px}.stats-grid{gap:9px;margin-top:13px}.stat-card{min-height:110px;padding:15px 14px}.stat-value{font-size:26px}.section-heading{margin-top:25px}.section-heading h3{font-size:15px}.panel-header{padding:16px}.panel-body{padding:15px}.callout-row{flex-direction:column;align-items:flex-start}.tool-grid,.gov-grid,.eco-grid{grid-template-columns:1fr}.scenario-grid{grid-template-columns:1fr 1fr}.facility-card{padding:15px}.cap-grid{gap:5px}.cap-item{padding:10px 3px}.referral-head{flex-direction:column}.mobile-tabs{display:flex;position:fixed;bottom:0;left:0;right:0;background:#fff;padding:8px 4px max(8px,env(safe-area-inset-bottom));border-top:1px solid #e2ebea;z-index:30;justify-content:space-around;box-shadow:0 -2px 15px #1d5b4615}.mobile-tab{border:0;background:transparent;color:#8aa0a2;display:grid;justify-items:center;gap:4px;min-width:68px;padding:5px;border-radius:9px}.mobile-tab span{font-size:21px}.mobile-tab small{font-size:9px;font-weight:740}.mobile-tab.active{color:#168063;background:#eaf7f0}.toast{bottom:83px;left:15px;right:15px;max-width:none}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 
-  </style>
+  
+/* Compact, touch-friendly prototype controls (NOT clinical software). */
+.tour-panel{background:#ecf8f1;border:2px solid #5a9d86;border-radius:12px;padding:15px 20px;margin-bottom:18px;display:flex;flex-wrap:wrap;align-items:center;gap:12px;color:#173f39}
+.tour-panel[hidden]{display:none}.tour-panel p{margin:0;flex:1 1 240px;font-size:13px}.tour-panel progress{width:150px;height:15px}
+.network-diagram{display:grid;grid-template-columns:minmax(0,1fr) 90px minmax(0,1fr);align-items:stretch;gap:8px;margin:14px 0}
+.network-col{display:grid;gap:8px}.network-node{padding:8px;background:#eff8f3;border:1px solid #b9dace;border-radius:7px;display:flex;flex-direction:column;gap:3px}
+.network-node strong{font-size:13px}.network-node small,.network-node span{font-size:12px;color:#295c54}.network-links{width:100%;height:100%;min-height:170px}
+@media(max-width:640px){.mobile-tab{min-width:0;flex:1;max-width:20%;min-height:50px}.mobile-tab small,.top-warning,.small-note,.stat-foot,.facility-meta,.referral-details,.timeline-item,.cap-item span,.hero p,.btn-small,.pill,.notice,.tagline{font-size:12px}.btn,.scenario-card{min-height:44px}.network-diagram{grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr)}.network-links{min-height:200px}.tour-panel progress{width:110px}}
+</style>
   <link rel="manifest" href="./manifest.webmanifest" />
 </head>
 <body>
@@ -73,6 +81,7 @@
       <div id="inspect-d1-results" aria-live="polite" style="margin-top:8px;font-size:12px"></div>
       <div id="review-demo-results" aria-live="polite" style="margin-top:8px;font-size:12px"></div>
     </aside>
+    <div id="tour-panel" class="tour-panel" hidden role="region" aria-label="Guided fictional demonstration"><strong>Local-only guided fictional scenario</strong><p id="tour-stage" role="status" aria-live="polite">Not started.</p><progress id="tour-meter" max="6" value="0" aria-label="Fictional walkthrough progress"></progress><button type="button" class="btn btn-secondary btn-small" data-action="tour-stop">Stop walkthrough</button></div>
     <section id="page-content"></section>
   </main>
 </div>
@@ -123,7 +132,8 @@ export function getCandidates(facilities, need, now = Date.now()) {
   if (!CASE_TYPES[need]) throw new Error('Unsupported fictional referral need');
   return facilities.filter(f => f.demoOnly === true && f.type === 'referral' &&
     f.active === true && isFresh(f.capacity, now) && hasNeeds(f, need))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => illustrativeScore(b,now)-illustrativeScore(a,now) ||
+      a.id.localeCompare(b.id));
 }
 export function makeReferral({facility, need, id, now = Date.now()}) {
   if (!facility || !CASE_TYPES[need] || typeof id !== 'string' || !/^SIM-[A-Z0-9-]{6,25}$/.test(id))
@@ -201,6 +211,99 @@ const refs = [
 ];
 const STATE_VERSION=2;
 const APP_KEY='nchenne.v02.synthetic';
+let pendingNeed=null;
+let reofferExclude=null;
+export function illustrativeScore(f,now=Date.now()){
+ const age=now-Date.parse(f.capacity?.updatedAt);
+ if(!Number.isFinite(age)||age<0)return -1;
+ // Only rank fully eligible FICTIONAL records. No clinical urgency,
+ // travel estimation or partially-capable fallback is authorized.
+ return Math.min(f.capacity.beds,5)*5+Math.max(0,45-Math.ceil(age/60000));
+}
+function candidatePicker(){
+ if(!pendingNeed)return '';
+ const options=getCandidates(state.facilities,pendingNeed).filter(f=>f.id!==reofferExclude);
+ const rows=options.map((f,i)=>'<div class="facility-row"><div><strong>'+x(f.name)+'</strong><span class="facility-place">#'+(i+1)+' · '+f.capacity.beds+' fictional beds · score '+illustrativeScore(f)+' (illustrative only)</span></div><button type="button" class="btn btn-primary btn-small" data-action="choose" data-need="'+x(pendingNeed)+'" data-facility="'+x(f.id)+'">Create fictional offer</button></div>').join('');
+ return '<section class="panel" aria-label="Ranked fictional eligible facilities"><div class="panel-body"><h3>Choose a fully eligible fictional facility</h3><p class="small-note">Sorted only by sample bed count and freshness. This is NOT clinical ranking, transport guidance, or evidence of real capacity. Ineligible facilities are never offered.</p>'+(rows||'<p class="notice alert">No other fully eligible fictional facility. This demonstration cannot choose an unsafe partial match.</p>')+'</div></section>';
+}
+function syntheticJourneyMetrics(){
+ const accept=[],arrival=[];
+ for(const r of state.referrals.filter(r=>r.demoOnly===true)){
+  const offered=r.timeline?.find(e=>e.status==='offered');
+  const accepted=r.timeline?.find(e=>e.status==='accepted');
+  const arrived=r.timeline?.find(e=>e.status==='arrived');
+  if(!offered)continue;
+  const start=Date.parse(offered.at);
+  if(accepted && Date.parse(accepted.at)>=start)
+   accept.push((Date.parse(accepted.at)-start)/1000);
+  if(arrived && Date.parse(arrived.at)>=start)
+   arrival.push((Date.parse(arrived.at)-start)/1000);
+ }
+ const mean=arr=>arr.length?(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1)+'s':'not available';
+ return {accept:mean(accept),arrival:mean(arrival),offers:state.referrals.length};
+}
+function networkDiagram(){
+ const phcs=state.facilities.filter(f=>f.type==='phc');
+ const receiving=state.facilities.filter(f=>f.type==='referral');
+ const card=(f)=>'<div class="network-node"><strong>'+x(f.id)+'</strong><small>'+x(f.district)+'</small><span>'+x(f.type==='phc'?'Fictional PHC':facilityReadiness(f)==='ready'?'Fictional fresh report':'Fictional stale / unavailable')+'</span></div>';
+ return '<section class="panel" aria-label="Diagram of fictional demonstration network"><div class="panel-body"><h3>Fictional network view — NOT a map</h3><p class="small-note">Diagram only: lines are invented demonstration links, not geographic routes, actual referrals, or hospital availability.</p><div class="network-diagram"><div class="network-col">'+phcs.map(card).join('')+'</div><svg class="network-links" viewBox="0 0 100 120" aria-hidden="true" preserveAspectRatio="none"><path d="M0 14 L100 14 M0 60 L100 60 M0 105 L100 105 M0 14 L100 105 M0 105 L100 14" fill="none" stroke="#5d9c8c" stroke-width="2" stroke-dasharray="5 5"/></svg><div class="network-col">'+receiving.map(card).join('')+'</div></div></div></section>';
+}
+function exportTimelineCsv(){
+ const safe=v=>{let s=String(v??'');if(/^[=+@\-]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};
+ const rows=[['synthetic_id','facility_code','event_status','event_time_utc','simulated_actor','demo_only'],...state.referrals.filter(r=>r.demoOnly===true).flatMap(r=>r.timeline.map(e=>[r.id,r.facilityId,e.status,e.at,e.actor,'true']))];
+ const blob=new Blob([rows.map(row=>row.map(safe).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
+ const link=URL.createObjectURL(blob),a=document.createElement('a');a.href=link;a.download='nchenne-fictional-event-timeline.csv';a.click();setTimeout(()=>URL.revokeObjectURL(link),2000);
+}
+let tourTimer=null,tourIndex=-1,tourReferral=null;
+const TOUR_STEPS=[
+ 'Refresh one fictional receiving-facility capacity report.',
+ 'Review eligible fictional facilities; no clinical or distance inference.',
+ 'Create an unaccepted fictional offer.',
+ 'Simulate an explicit receiving-facility acceptance.',
+ 'Simulate a receiving-facility arrival acknowledgment.',
+ 'Complete the fictional administrative referral; no health outcome inferred.'
+];
+function tourClose(){
+ if(tourTimer!==null)clearTimeout(tourTimer);
+ tourTimer=null;
+ document.getElementById('tour-panel').hidden=true;
+}
+function tourNext(){
+ tourTimer=null; tourIndex++;
+ try {
+  if(tourIndex===0){
+    state.facilities=state.facilities.map(f=>f.id==='REF-A'?{...f,capacity:makeReport(f.config)}:f);
+    persist();render();
+  } else if(tourIndex===1){
+    if(!getCandidates(state.facilities,'comprehensive').length)throw Error('No eligible fictional facility');
+  } else if(tourIndex===2){
+    const f=getCandidates(state.facilities,'comprehensive')[0];
+    createSynthetic('comprehensive',f.id);
+    tourReferral=state.referrals[0].id;
+  } else if(tourIndex===3)updateStatus(tourReferral,'accepted');
+    else if(tourIndex===4)updateStatus(tourReferral,'arrived');
+    else if(tourIndex===5)updateStatus(tourReferral,'completed');
+  document.getElementById('tour-meter').value=tourIndex+1;
+  document.getElementById('tour-stage').textContent='Step '+(tourIndex+1)+' of 6 — '+TOUR_STEPS[tourIndex];
+  if(tourIndex<5)tourTimer=setTimeout(tourNext,1600);
+ }catch{tourClose();toast('Guided fictional walkthrough stopped; check sample eligibility.');}
+}
+function tourStart(){
+ tourClose();pendingNeed=null;reofferExclude=null;
+ const el=document.getElementById('tour-panel');el.hidden=false;
+ document.getElementById('tour-meter').value=0;
+ document.getElementById('tour-stage').textContent='Preparing six fictional local-only steps...';
+ tourIndex=-1;tourReferral=null;tourTimer=setTimeout(tourNext,100);
+}
+function offerClockTick(){
+ const now=Date.now();
+ for(const el of document.querySelectorAll('[data-offer-clock]')){
+  const created=Date.parse(el.getAttribute('data-offer-clock'));
+  const left=Math.max(0,OFFER_TTL_MS-(now-created));
+  el.textContent='Illustrative local demo expiry in '+Math.ceil(left/1000)+'s — not an emergency deadline.';
+ }
+}
+
 let view='overview';
 function sessionGet(key){try{return sessionStorage.getItem(key);}catch{return null;}}
 function sessionSet(key,value){try{sessionStorage.setItem(key,value);}catch{/* Offline private mode remains usable. */}}
@@ -223,9 +326,10 @@ function stats(){const m=metrics(state.referrals);const ready=state.facilities.f
 return `<div class="stats-grid"><article class="stat-card"><div class="stat-top"><span class="stat-label">${x(t('ready'))}</span><span class="stat-icon">✚</span></div><div class="stat-value">${ready}<small style="font-size:12px;color:#a6b7b7"> / 3</small></div><div class="stat-foot"><span class="ok">●</span> Simulated referral facilities</div></article><article class="stat-card"><div class="stat-top"><span class="stat-label">${x(t('total'))}</span><span class="stat-icon">⇄</span></div><div class="stat-value">${m.total}</div><div class="stat-foot">No real patient data</div></article><article class="stat-card"><div class="stat-top"><span class="stat-label">${x(t('accepted'))}</span><span class="stat-icon">✓</span></div><div class="stat-value">${m.accepted}</div><div class="stat-foot">Requires simulated facility acceptance</div></article><article class="stat-card"><div class="stat-top"><span class="stat-label">${x(t('arrived'))}</span><span class="stat-icon">↗</span></div><div class="stat-value">${m.arrived}</div><div class="stat-foot">${m.completed} synthetic completions</div></article></div>`;}
 function overview(){const ready=state.facilities.filter(f=>f.type==='referral');const m=metrics(state.referrals);
 return `${sectionTitle('NETWORK OPERATIONS', t('welcome'), 'A purpose-built, low-data coordination prototype for maternal emergency referrals — fictional data only.', `<button class="btn btn-secondary" data-action="export">↓ Export demo CSV</button>`) }
-<section class="hero"><div class="hero-main"><span class="eyebrow">${x(t('tagline').toUpperCase())}</span><h2>${x(t('heroTitle'))}</h2><p>${x(t('heroText'))}</p><div class="hero-actions"><button class="btn" data-action="navigate-referrals">＋ ${x(t('tryDemo'))}</button><button class="btn btn-outline" data-action="navigate-facilities">${x(t('browse'))} ↗</button></div></div><div class="hero-visual" aria-hidden="true"><svg class="hero-line" viewBox="0 0 300 220"><path d="M64 182 Q165 38 205 54"/><path d="M64 182 Q155 125 242 166"/></svg><div class="hero-cross">✚</div><span class="hero-point p1"></span><span class="hero-point p2"></span><span class="hero-point p3"></span></div></section>
+<section class="hero"><div class="hero-main"><span class="eyebrow">${x(t('tagline').toUpperCase())}</span><h2>${x(t('heroTitle'))}</h2><p>${x(t('heroText'))}</p><div class="hero-actions"><button class="btn" data-action="navigate-referrals">＋ ${x(t('tryDemo'))}</button><button class="btn btn-outline" data-action="tour-start">▶ Play guided fictional walkthrough</button><button class="btn btn-outline" data-action="navigate-facilities">${x(t('browse'))} ↗</button></div></div><div class="hero-visual" aria-hidden="true"><svg class="hero-line" viewBox="0 0 300 220"><path d="M64 182 Q165 38 205 54"/><path d="M64 182 Q155 125 242 166"/></svg><div class="hero-cross">✚</div><span class="hero-point p1"></span><span class="hero-point p2"></span><span class="hero-point p3"></span></div></section>
 ${stats()}
-<div class="section-heading"><div><h3>Network pulse</h3><p>Fictional facilities. Self-reported status is not independent verification.</p></div><span class="section-caption">${x(t('pilot'))}</span></div>
+${networkDiagram()}
+ <div class="section-heading"><div><h3>Network pulse</h3><p>Fictional facilities. Self-reported status is not independent verification.</p></div><span class="section-caption">${x(t('pilot'))}</span></div>
 <div class="grid-two"><article class="panel"><div class="panel-header"><div><h3>Receiving facility readiness</h3><p>45-minute synthetic freshness threshold</p></div><button class="plain-btn" data-action="navigate-facilities">View all →</button></div><div class="panel-body">${ready.map(f=>`<div class="facility-row"><div><span class="facility-label">${x(f.name)}</span><span class="facility-place">${x(f.district)} • ${f.capacity?.beds??'—'} demo beds reported • ${x(relative(f.capacity?.updatedAt))}</span></div>${statusPill(facilityReadiness(f))}</div>`).join('')}</div></article>
 <article class="panel"><div class="panel-header"><div><h3>Referral journey</h3><p>Every handover needs an explicit acceptance event</p></div></div><div class="panel-body"><div class="workflow-list"><div class="workflow-item"><span class="workflow-num">1</span><div><strong>Capacity reported</strong><span>Time-limited, staff-supplied data</span></div></div><div class="workflow-item"><span class="workflow-num">2</span><div><strong>Facility acknowledges</strong><span>Only then “expecting” may be considered</span></div></div><div class="workflow-item"><span class="workflow-num">3</span><div><strong>Arrival recorded</strong><span>No invented patient outcome</span></div></div></div><div class="progress-group"><div class="progress-label"><span>Fictional referral close-out</span><strong>${m.total?Math.round(100*m.completed/m.total):0}%</strong></div><div class="progress-bg"><div class="progress-fill" style="width:${m.total?Math.round(100*m.completed/m.total):0}%"></div></div></div><p class="small-note">No clinical outcomes or real service-performance claims are inferred from this simulated funnel.</p></div></article></div>
 <div class="callout-row"><div><h3>Built for Nigerian realities. Designed to fail safely.</h3><p>Offline demonstration • low-data interface • five language selections • explicit stale reports • no real patient details stored.</p></div><button class="btn btn-primary" data-action="navigate-governance">See safety boundaries →</button></div>`;}
@@ -237,11 +341,13 @@ function facilities(){return `${sectionTitle('NETWORK DIRECTORY',t('facIntro'),'
 <div class="grid-two"><article class="panel"><div class="panel-header"><h3>Simulated staff reporting</h3></div><div class="panel-body"><form id="capacity-form"><div class="form-row"><label class="form-label" for="report-facility">${x(t('facility'))}</label><select class="form-select" id="report-facility" name="facilityId" required>${state.facilities.map(f=>`<option value="${x(f.id)}">${x(f.name)}</option>`).join('')}</select></div><div class="form-row"><label class="form-label" for="report-beds">Reported usable demo beds</label><input class="form-field" type="number" id="report-beds" name="beds" min="0" max="500" value="2" required></div><div class="inline-field"><label class="check-row"><input type="checkbox" name="skilled" checked> Skilled team</label><label class="check-row"><input type="checkbox" name="theatre"> Theatre</label><label class="check-row"><input type="checkbox" name="blood"> Blood service</label></div><button type="submit" class="btn btn-primary">✓ ${x(t('report'))}</button></form></div></article>
 <article class="panel"><div class="panel-header"><h3>Test failure modes</h3></div><div class="panel-body"><div class="notice info"><strong>Freshness is not acceptance</strong><p>A recently reported bed must never be described as reserved. An authorized receiving facility must explicitly accept a specific referral.</p></div><p class="small-note">Use these actions to see how the demo blocks stale and zero-capacity facilities.</p><div class="buttons"><button class="btn btn-secondary btn-small" data-action="stale">⌛ Mark demo reports stale</button><button class="btn btn-secondary btn-small" data-action="refresh">↻ Refresh synthetic reports</button></div></div></article></div>`;}
 function referralRow(r){const next={offered:[['Accept offer (staff simulation)','accepted'],['Decline','declined'],['Escalate','escalated'],['Expire','expired']],accepted:[['Confirm arrival (staff simulation)','arrived'],['Escalate','escalated']],escalated:[['Accept after review (staff simulation)','accepted'],['Decline','declined'],['Expire','expired']],arrived:[['Complete simulated referral','completed']]}[r.status]||[];
-return `<article class="referral-card"><div class="referral-head"><div><span class="tagline">SYNTHETIC REFERRAL · ${x(r.id)}</span><div class="referral-code">${x(r.code)}</div><strong style="font-size:13px">${x(r.facilityName)}</strong><div class="referral-details">${x(CASE_TYPES[r.need]?.label)} · ${x(new Date(r.createdAt).toLocaleString())}<br><strong>Fictional only</strong> — no person, booking, ambulance, or actual acceptance.</div></div><div>${statusPill(r.status)}</div></div><details><summary style="cursor:pointer;font-size:11px;font-weight:750;color:#168267">${x(t('timeline'))} (${r.timeline.length})</summary><div class="timeline">${r.timeline.map(e=>`<div class="timeline-item"><strong>${x(e.status)}</strong><span>${x(e.detail)}</span><span>${x(relative(e.at))} • ${x(e.actor)}</span></div>`).join('')}</div></details><div class="referral-actions">${next.map(([label,s])=>`<button class="btn btn-${s==='declined'?'danger':s==='escalated'?'secondary':'primary'} btn-small" data-action="transition" data-next="${x(s)}" data-id="${x(r.id)}">${x(label)}</button>`).join('')}${!next.length?'<span class="small-note">No further synthetic transition permitted.</span>':''}</div></article>`;}
-function referrals(){return `${sectionTitle('REFERRAL COORDINATION', t('refIntro'),'No chatbot diagnosis, no patient identities, no real messages. Every status update is a fictional event.', `<button class="btn btn-secondary" data-action="export">↓ Download synthetic CSV</button>`) }
+return `<article class="referral-card"><div class="referral-head"><div><span class="tagline">SYNTHETIC REFERRAL · ${x(r.id)}</span><div class="referral-code">${x(r.code)}</div><strong style="font-size:13px">${x(r.facilityName)}</strong><div class="referral-details">${x(CASE_TYPES[r.need]?.label)} · ${x(new Date(r.createdAt).toLocaleString())}<br><strong>Fictional only</strong> — no person, booking, ambulance, or actual acceptance.${['offered','escalated'].includes(r.status)?'<br><span data-offer-clock="'+x(r.createdAt)+'">Illustrative countdown</span>':''}</div></div><div>${statusPill(r.status)}</div></div><details><summary style="cursor:pointer;font-size:11px;font-weight:750;color:#168267">${x(t('timeline'))} (${r.timeline.length})</summary><div class="timeline">${r.timeline.map(e=>`<div class="timeline-item"><strong>${x(e.status)}</strong><span>${x(e.detail)}</span><span>${x(relative(e.at))} • ${x(e.actor)}</span></div>`).join('')}</div></details><div class="referral-actions">${next.map(([label,s])=>`<button class="btn btn-${s==='declined'?'danger':s==='escalated'?'secondary':'primary'} btn-small" data-action="transition" data-next="${x(s)}" data-id="${x(r.id)}">${x(label)}</button>`).join('')}${['declined','expired'].includes(r.status)?'<button class="btn btn-secondary btn-small" data-action="reoffer" data-id="'+x(r.id)+'">Create fresh offer elsewhere</button>':''}${!next.length?'<span class="small-note">No further transition for this record.</span>':''}</div></article>`;}
+function referrals(){return `${sectionTitle('REFERRAL COORDINATION', t('refIntro'),'No chatbot diagnosis, no patient identities, no real messages. Every status update is a fictional event.', `<button class="btn btn-secondary" data-action="export">↓ Download synthetic CSV</button><button class="btn btn-secondary" data-action="export-timeline">↓ Event timeline CSV</button>`) }
 <div class="notice alert"><strong>Emergency safeguard:</strong> If someone is experiencing a real pregnancy-related emergency, do not use this demo or wait for a referral code. Seek immediate in-person care and contact local emergency services (112 in Nigeria, where operational).</div>
 <div class="section-heading"><div><h3>Choose a fictional coordination scenario</h3><p>Selection models service capabilities, not symptom classification or clinical advice.</p></div></div>
 <div class="scenario-grid">${Object.values(CASE_TYPES).map((need,i)=>`<button class="scenario-card" data-action="create" data-need="${x(need.id)}"><span class="symbol">${['✚','▦','◈','✦'][i]}</span><strong>${x(need.label)}</strong><span>Create a fictitious offer to an eligible demo hospital →</span></button>`).join('')}</div>
+${candidatePicker()}
+<div class="notice info"><strong>Synthetic research indicators only:</strong> Mean offer-to-accept: ${syntheticJourneyMetrics().accept} · Mean offer-to-arrival: ${syntheticJourneyMetrics().arrival}. Demonstration interactions are not real-world service outcomes.</div>
 <div class="section-heading"><div><h3>Simulation referral ledger</h3><p>Staff roles, acknowledgment, arrival and completed events are simulated only.</p></div><div class="buttons"><button class="btn btn-secondary btn-small" data-action="reset">${x(t('reset'))}</button></div></div>
 ${state.referrals.length?state.referrals.map(referralRow).join(''):`<div class="empty-state"><span class="empty-icon">⇄</span><h3>${x(t('empty'))}</h3><p>${x(t('emptyHint'))}</p></div>`}`;}
 function governance(){const items=[
@@ -274,7 +380,29 @@ function render(){const title={overview:t('overview'),facilities:t('facilities')
  document.getElementById('page-content').innerHTML=({overview,facilities,referrals,governance,ecosystem}[view])();
 }
 function navigate(to){if(!['overview','facilities','referrals','governance','ecosystem'].includes(to))return;view=to;location.hash=to;render();window.scrollTo({top:0,behavior:'auto'});}
-function createSynthetic(need){try{const candidates=getCandidates(state.facilities,need);if(!candidates.length){toast(t('noMatch'));return;}let id='SIM-'+Array.from(crypto.getRandomValues(new Uint8Array(6))).map(b=>b.toString(16).padStart(2,'0').toUpperCase()).join('');const ref=makeReferral({facility:candidates[0],need,id});state.referrals.unshift(ref);persist();navigate('referrals');toast(t('created'));}catch(e){toast('Demo error: '+e.message);}}
+function createSynthetic(need,facilityId){
+ try{
+  const candidates=getCandidates(state.facilities,need).filter(f=>f.id!==reofferExclude);
+  if(!candidates.length){toast(t('noMatch'));return;}
+  if(!facilityId){
+   pendingNeed=need;render();toast('Choose an eligible fictional facility below.');return;
+  }
+  const selected=candidates.find(f=>f.id===facilityId);
+  if(!selected)throw Error('This fictional facility is not eligible or its report is stale.');
+  const id='SIM-'+Array.from(crypto.getRandomValues(new Uint8Array(6))).map(b=>b.toString(16).padStart(2,'0').toUpperCase()).join('');
+  const ref=makeReferral({facility:selected,need,id});
+  state.referrals.unshift(ref);pendingNeed=null;reofferExclude=null;
+  persist();navigate('referrals');toast(t('created'));
+ }catch(e){toast('Demo error: '+e.message);}
+}
+function reofferSynthetic(id){
+ const old=state.referrals.find(r=>r.id===id && r.demoOnly===true);
+ if(!old||!['declined','expired'].includes(old.status)){toast('First decline or expire the fictional offer.');return;}
+ pendingNeed=old.need;reofferExclude=old.facilityId;
+ navigate('referrals');
+ toast('Select another fully eligible fictional facility for a NEW offer. The old audit record stays unchanged.');
+}
+
 function expireLocalOffers(now=Date.now()){
   let changed=false;
   state.referrals=state.referrals.map(r=>{
@@ -292,8 +420,8 @@ function exportCsv(){const safe=v=>{let s=String(v??'');if(/^[=+@\-]/.test(s))s=
 function setAllStale(stale){state.facilities=state.facilities.map(f=>({...f,capacity:{...makeReport(f.config),updatedAt:stale?new Date(Date.now()-CAPACITY_TTL_MS-60_000).toISOString():new Date().toISOString()}}));persist();render();toast(stale?'Reports deliberately marked stale.':'Synthetic reports refreshed.');}
 function handleAction(e){const button=e.target.closest('[data-action], [data-view]');if(!button)return;if(button.hasAttribute('data-view')){navigate(button.dataset.view);return;}const a=button.dataset.action;
  if(a==='navigate-facilities')navigate('facilities');else if(a==='navigate-referrals')navigate('referrals');else if(a==='navigate-governance')navigate('governance');else if(a==='navigate-ecosystem')navigate('ecosystem');
- else if(a==='create')createSynthetic(button.dataset.need);else if(a==='transition')updateStatus(button.dataset.id,button.dataset.next);
- else if(a==='export')exportCsv();else if(a==='reset'){state=blankState();persist();render();toast('All fictional demonstration data reset.');}
+ else if(a==='create')createSynthetic(button.dataset.need);else if(a==='choose')createSynthetic(button.dataset.need,button.dataset.facility);else if(a==='transition')updateStatus(button.dataset.id,button.dataset.next);else if(a==='reoffer')reofferSynthetic(button.dataset.id);else if(a==='tour-start')tourStart();else if(a==='tour-stop')tourClose();
+ else if(a==='export')exportCsv();else if(a==='export-timeline')exportTimelineCsv();else if(a==='reset'){state=blankState();persist();render();toast('All fictional demonstration data reset.');}
  else if(a==='stale')setAllStale(true);else if(a==='refresh')setAllStale(false);
 }
 document.addEventListener('click',handleAction);
@@ -302,10 +430,10 @@ document.getElementById('language').addEventListener('change',e=>{lang=e.target.
 window.addEventListener('online',render);window.addEventListener('offline',render);
 window.addEventListener('focus',()=>expireLocalOffers());
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)expireLocalOffers();});
-setInterval(()=>expireLocalOffers(),15000);
+setInterval(()=>{expireLocalOffers();offerClockTick();},5000);
 window.addEventListener('hashchange',()=>{const hash=location.hash.slice(1);if(['overview','facilities','referrals','governance','ecosystem'].includes(hash)){view=hash;render();}});
 if(['overview','facilities','referrals','governance','ecosystem'].includes(location.hash.slice(1)))view=location.hash.slice(1);
-expireLocalOffers();render();
+expireLocalOffers();render();offerClockTick();
 // Offline cache contains static shell and synthetic source only. No clinical or patient records are cached.
 if('serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
 
