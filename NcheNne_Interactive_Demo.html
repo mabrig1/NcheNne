@@ -6,6 +6,10 @@
   <meta name="theme-color" content="#102a33" />
   <meta name="description" content="NcheNne Health Network — synthetic-only maternal referral coordination demonstrator for Nigeria." />
   <meta name="robots" content="noindex,nofollow" />
+  <!-- Inline CSP is deliberately compatible with the existing one-file demo.
+       It blocks external code and connections, but inline JS/CSS is still
+       permitted until a reviewed module refactor can remove unsafe-inline. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; worker-src 'self'; manifest-src 'self'; form-action 'self'" />
   <title>NcheNne | Maternal Referral Network — Fictional Demo</title>
   <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5NiA5NiI+CiA8cmVjdCB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHJ4PSIyMyIgZmlsbD0iIzEwMmUzNCIvPgogPHBhdGggZD0iTTQ4IDE0QzI4IDI0IDE4IDM3IDE4IDU0YzAgMTkgMTMgMzEgMzAgMzFzMzAtMTIgMzAtMzFDNzggMzcgNjggMjQgNDggMTRaIiBmaWxsPSJub25lIiBzdHJva2U9IiM3ZWQ4YjUiIHN0cm9rZS13aWR0aD0iNSIvPgogPHBhdGggZD0iTTQ4IDMydjM2TTMwIDUwaDM2IiBzdHJva2U9IiNmNmZmZjkiIHN0cm9rZS13aWR0aD0iNyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPgo=" type="image/svg+xml" />
   <style>

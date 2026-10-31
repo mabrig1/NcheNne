@@ -89,3 +89,14 @@ test("guided demo and ranked choices stay local, synthetic and nonclinical",()=>
  assert.doesNotMatch(standalone,/<link[^>]*href="https?:/i);
  assert.doesNotMatch(standalone,/import\s*\{/);
 });
+
+test("interim static CSP blocks external resources without breaking embedded scripts",()=>{
+ for(const p of ["index.html","public/index.html","NcheNne_Interactive_Demo.html"]){
+  const page=readFileSync(new URL("../"+p,import.meta.url),"utf8");
+  assert.match(page,/http-equiv="Content-Security-Policy"/);
+  assert.match(page,/default-src 'none'/);
+  assert.match(page,/connect-src 'self'/);
+  assert.match(page,/object-src 'none'/);
+  assert.doesNotMatch(page,/script-src[^"]*https?:/);
+ }
+});

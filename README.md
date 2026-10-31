@@ -279,3 +279,10 @@ These require separate safeguards, research or clinical review.
 - [One-page synthetic/nonclinical safety sheet](docs/PROTOTYPE_SAFETY_ONE_PAGE.md) — share alongside screenshots or exports.
 - [Fictional-network design and research methodology](docs/FICTIONAL_NETWORK_METHODS.md) — documents fixture selection, illustrative sorting, limitations and safe non-identifying feedback.
 - Licensing is **not yet chosen** by the repository owner; absence of a LICENSE file must not be interpreted as permission to reuse clinical or proprietary materials.
+
+
+The browser HTML now includes an interim restrictive **meta CSP**:
+external scripts, connections and objects are denied; the existing inline
+JavaScript/CSS remain permitted while the zero-import standalone artifact is
+maintained. This is not a substitute for reviewed HTTP response CSP headers or
+an eventual nonce/hash-based strict policy.
