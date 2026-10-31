@@ -272,3 +272,10 @@ require an eligible secure origin. These changes do not confer clinical readines
 scores, clinical case-profile logic, validated translation/TTS, external
 feedback, TypeScript refactor, real event sourcing, and real patient workflow.
 These require separate safeguards, research or clinical review.
+
+
+### Stakeholder documentation
+
+- [One-page synthetic/nonclinical safety sheet](docs/PROTOTYPE_SAFETY_ONE_PAGE.md) — share alongside screenshots or exports.
+- [Fictional-network design and research methodology](docs/FICTIONAL_NETWORK_METHODS.md) — documents fixture selection, illustrative sorting, limitations and safe non-identifying feedback.
+- Licensing is **not yet chosen** by the repository owner; absence of a LICENSE file must not be interpreted as permission to reuse clinical or proprietary materials.
